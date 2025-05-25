@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  HR
+  EMPLOYEE
+  SUPER_ADMIN
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeaveType {
+  MATERNITY
+  PATERNITY
+  SICK
+  EMERGENCY
+  ANNUAL
+}
+
+model User {
+  id              String      @id @default(uuid())
+  name            String
+  email           String      @unique
+  password        String
+  phoneNumber     String?
+  role            UserRole    @default(EMPLOYEE)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  imageUrl        String
+  imageKey        String
+  delFlag         Boolean     @default(false)
+  changedPassword Boolean     @default(false)
+  dob             DateTime
+  address         String?
+  city            String?
+  departmentId    String?
+  department      Department? @relation(fields: [departmentId], references: [id])
+  lastLogin       DateTime?
+
+  // Auditing
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   User?   @relation("CreatedUsers", fields: [createdById], references: [id])
+  updatedBy   User?   @relation("UpdatedUsers", fields: [updatedById], references: [id])
+  deletedBy   User?   @relation("DeletedUsers", fields: [deletedById], references: [id])
+
+  // Relations
+  leaves         Leave[]
+  leaveHistories LeaveHistory[]
+  notifications  Notification[]
+
+  // Reverse audit
+  createdUsers User[] @relation("CreatedUsers")
+  updatedUsers User[] @relation("UpdatedUsers")
+  deletedUsers User[] @relation("DeletedUsers")
+
+  createdDepartments Department[] @relation("CreatedDepartments")
+  updatedDepartments Department[] @relation("UpdatedDepartments")
+  deletedDepartments Department[] @relation("DeletedDepartments")
+
+  createdLeaves Leave[] @relation("CreatedLeaves")
+  updatedLeaves Leave[] @relation("UpdatedLeaves")
+  deletedLeaves Leave[] @relation("DeletedLeaves")
+
+  approvedLeaves Leave[] @relation("ApprovedLeaves")
+  rejectedLeaves Leave[] @relation("RejectedLeaves")
+
+  changedLeaveHistories LeaveHistory[] @relation("LeaveHistoryChanger")
+
+  createdLeavePolicies LeavePolicy[] @relation("CreatedLeavePolicies")
+  updatedLeavePolicies LeavePolicy[] @relation("UpdatedLeavePolicies")
+  deletedLeavePolicies LeavePolicy[] @relation("DeletedLeavePolicies")
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  delFlag     Boolean  @default(false)
+
+  // Auditing
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   User?   @relation("CreatedDepartments", fields: [createdById], references: [id])
+  updatedBy   User?   @relation("UpdatedDepartments", fields: [updatedById], references: [id])
+  deletedBy   User?   @relation("DeletedDepartments", fields: [deletedById], references: [id])
+
+  users User[]
+}
+
+model Leave {
+  id        String      @id @default(uuid())
+  userId    String
+  leaveType LeaveType
+  startDate DateTime
+  endDate   DateTime
+  reason    String
+  status    LeaveStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  delFlag   Boolean     @default(false)
+
+  user          User           @relation(fields: [userId], references: [id])
+  histories     LeaveHistory[]
+  notifications Notification[]
+
+  approvedById String?
+  rejectedById String?
+  approver     User?   @relation("ApprovedLeaves", fields: [approvedById], references: [id])
+  rejecter     User?   @relation("RejectedLeaves", fields: [rejectedById], references: [id])
+
+  // Auditing
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   User?   @relation("CreatedLeaves", fields: [createdById], references: [id])
+  updatedBy   User?   @relation("UpdatedLeaves", fields: [updatedById], references: [id])
+  deletedBy   User?   @relation("DeletedLeaves", fields: [deletedById], references: [id])
+}
+
+model LeaveHistory {
+  id           String      @id @default(uuid())
+  leaveId      String
+  oldStatus    LeaveStatus
+  newStatus    LeaveStatus
+  statusChange DateTime    @default(now())
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  delFlag      Boolean     @default(false)
+
+  userId      String // The user whose leave was updated
+  changedById String? // Admin/HR who made the change
+
+  user    User  @relation(fields: [userId], references: [id])
+  leave   Leave @relation(fields: [leaveId], references: [id])
+  changer User? @relation("LeaveHistoryChanger", fields: [changedById], references: [id])
+}
+
+model LeavePolicy {
+  id          String    @id @default(uuid())
+  leaveType   LeaveType
+  maxDays     Int
+  eligibility String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  delFlag     Boolean   @default(false)
+
+  // Auditing
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   User?   @relation("CreatedLeavePolicies", fields: [createdById], references: [id])
+  updatedBy   User?   @relation("UpdatedLeavePolicies", fields: [updatedById], references: [id])
+  deletedBy   User?   @relation("DeletedLeavePolicies", fields: [deletedById], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  leaveId   String?
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  delFlag   Boolean  @default(false)
+  isRead    Boolean  @default(false)
+
+  user  User   @relation(fields: [userId], references: [id])
+  leave Leave? @relation(fields: [leaveId], references: [id])
+}

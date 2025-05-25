@@ -1,0 +1,151 @@
+[
+  {
+    "modelName": "client",
+    "fields": [
+      "provider",
+      "output"
+    ]
+  },
+  {
+    "modelName": "db",
+    "fields": [
+      "provider",
+      "url"
+    ]
+  },
+  {
+    "modelName": "UserRole",
+    "fields": [
+      "ADMIN",
+      "HR",
+      "EMPLOYEE",
+      "SUPER_ADMIN"
+    ]
+  },
+  {
+    "modelName": "LeaveStatus",
+    "fields": [
+      "PENDING",
+      "APPROVED",
+      "REJECTED"
+    ]
+  },
+  {
+    "modelName": "LeaveType",
+    "fields": [
+      "MATERNITY",
+      "PATERNITY",
+      "SICK",
+      "EMERGENCY",
+      "ANNUAL"
+    ]
+  },
+  {
+    "modelName": "User",
+    "fields": [
+      "id",
+      "name",
+      "email",
+      "password",
+      "phoneNumber",
+      "role",
+      "createdAt",
+      "updatedAt",
+      "imageUrl",
+      "imageKey",
+      "delFlag",
+      "changedPassword",
+      "dob",
+      "address",
+      "city",
+      "departmentId",
+      "lastLogin",
+      "Unnamed Field",
+      "createdById",
+      "updatedById",
+      "deletedById",
+      "Unnamed Field",
+      "Unnamed Field"
+    ]
+  },
+  {
+    "modelName": "Department",
+    "fields": [
+      "id",
+      "name",
+      "description",
+      "createdAt",
+      "updatedAt",
+      "delFlag",
+      "Unnamed Field",
+      "createdById",
+      "updatedById",
+      "deletedById"
+    ]
+  },
+  {
+    "modelName": "Leave",
+    "fields": [
+      "id",
+      "userId",
+      "leaveType",
+      "startDate",
+      "endDate",
+      "reason",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "delFlag",
+      "approvedById",
+      "rejectedById",
+      "Unnamed Field",
+      "createdById",
+      "updatedById",
+      "deletedById"
+    ]
+  },
+  {
+    "modelName": "LeaveHistory",
+    "fields": [
+      "id",
+      "leaveId",
+      "oldStatus",
+      "newStatus",
+      "statusChange",
+      "createdAt",
+      "updatedAt",
+      "delFlag",
+      "userId",
+      "changedById"
+    ]
+  },
+  {
+    "modelName": "LeavePolicy",
+    "fields": [
+      "id",
+      "leaveType",
+      "maxDays",
+      "eligibility",
+      "createdAt",
+      "updatedAt",
+      "delFlag",
+      "Unnamed Field",
+      "createdById",
+      "updatedById",
+      "deletedById"
+    ]
+  },
+  {
+    "modelName": "Notification",
+    "fields": [
+      "id",
+      "userId",
+      "leaveId",
+      "message",
+      "createdAt",
+      "updatedAt",
+      "delFlag",
+      "isRead"
+    ]
+  }
+]

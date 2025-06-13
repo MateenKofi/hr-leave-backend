@@ -79,14 +79,14 @@ leaveRouter.delete(
 leaveRouter.put(
   "/approve/:leaveId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "HR"]),
   approveLeave,
 );
 // Reject a leave
 leaveRouter.put(
   "/reject/:leaveId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "HR"]),
   rejectLeave,
 );
 

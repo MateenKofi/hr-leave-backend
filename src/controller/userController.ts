@@ -249,7 +249,6 @@ export const userLogIn = async (
     });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
-    res.status(err.status).json({ message: err.message });
   }
 };
 

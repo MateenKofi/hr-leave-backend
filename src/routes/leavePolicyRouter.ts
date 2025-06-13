@@ -13,42 +13,36 @@ const leavePolicyRouter = Router();
 leavePolicyRouter.use(
   "/create",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "HR"]),
   createLeavePolicy,
 );
 // get leave policies
 leavePolicyRouter.use(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   getLeavePolicies,
 );
 // get leave policies by id
 leavePolicyRouter.use(
   "/getid/:leavePolicyId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   getLeavePolicyById,
 );
 // update leave policy
 leavePolicyRouter.use(
   "/update/:leavePolicyId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "HR"]),
   updateLeavePolicy,
 );
-// delete leave policy
-leavePolicyRouter.use(
-  "/update/:leavePolicyId",
-  authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
-  updateLeavePolicy,
-);
+
 // delete leave policy
 leavePolicyRouter.use(
   "/delete",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "HR"]),
   deleteLeavePolicy,
 );
 

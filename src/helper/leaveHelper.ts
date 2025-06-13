@@ -179,10 +179,10 @@ export const approveLeave = async (id: string, approverId: string) => {
     throw new HttpException(HttpStatus.NOT_FOUND, "Approver not found");
 
   // Prevent admin from approving their own leave
-  if (approver.role === "ADMIN" && leave.userId === approverId) {
+  if (approver.role === "HR" && leave.userId === approverId) {
     throw new HttpException(
       HttpStatus.FORBIDDEN,
-      "Admins cannot approve their own leave requests",
+      "HR cannot approve their own leave requests",
     );
   }
 
@@ -225,11 +225,11 @@ export const rejectLeave = async (id: string, rejecterId: string) => {
   if (!rejector)
     throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
 
-  // Prevent admin from approving their own leave
-  if (rejector.role === "ADMIN" && leave.userId === rejecterId) {
+  // Prevent HR from approving their own leave
+  if (rejector.role === "HR" && leave.userId === rejecterId) {
     throw new HttpException(
       HttpStatus.FORBIDDEN,
-      "Admins cannot reject their own leave requests",
+      "HR cannot reject their own leave requests",
     );
   }
 

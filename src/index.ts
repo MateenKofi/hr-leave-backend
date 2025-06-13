@@ -26,8 +26,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:8080",
-      "https://hallmanagementsystem.vercel.app",
-      "https://hall-mate-portal.vercel.app"
+      "https://hr-leave-system.vercel.app",
+      
     ],
     credentials: true,
   })

@@ -1,5 +1,5 @@
 // error-formatter.ts
-import { Prisma } from "../../generated/prisma";
+import { Prisma } from "@prisma/client"
 import { HttpStatus } from "./http-status";
 import HttpException from "./http-error";
 
@@ -20,14 +20,14 @@ export const formatPrismaError = (error: unknown): HttpException => {
           : "field";
         return new HttpException(
           HttpStatus.CONFLICT,
-          `Duplicate entry: The ${fields} already exists.`
+          `Duplicate entry: The ${fields} already exists.`,
         );
       }
 
       case "P2025":
         return new HttpException(
           HttpStatus.NOT_FOUND,
-          "Record not found: The requested resource does not exist."
+          "Record not found: The requested resource does not exist.",
         );
 
       case "P2003": {
@@ -35,14 +35,14 @@ export const formatPrismaError = (error: unknown): HttpException => {
         const field = error.meta?.field_name || "unknown field";
         return new HttpException(
           HttpStatus.BAD_REQUEST,
-          `Invalid reference: The provided value for '${field}' does not exist.`
+          `Invalid reference: The provided value for '${field}' does not exist.`,
         );
       }
 
       default:
         return new HttpException(
           HttpStatus.INTERNAL_SERVER_ERROR,
-          `Database error: ${cleanMessage(error.message)}`
+          `Database error: ${cleanMessage(error.message)}`,
         );
     }
   }
@@ -52,21 +52,24 @@ export const formatPrismaError = (error: unknown): HttpException => {
     const lines = error.message.split("\n").map((line) => line.trim());
 
     // Look for specific error explanation
-    const errorDetail = lines.find((line) =>
-      line.includes("needs at least one") ||
-      line.includes("is missing") ||
-      line.includes("is invalid") ||
-      line.includes("Unknown argument")
+    const errorDetail = lines.find(
+      (line) =>
+        line.includes("needs at least one") ||
+        line.includes("is missing") ||
+        line.includes("is invalid") ||
+        line.includes("Unknown argument"),
     );
 
     if (errorDetail) {
       // Handle "Unknown argument" case
-      const unknownArgMatch = errorDetail.match(/Unknown argument `([^`]+)`. Did you mean `([^`]+)`?/);
+      const unknownArgMatch = errorDetail.match(
+        /Unknown argument `([^`]+)`. Did you mean `([^`]+)`?/,
+      );
       if (unknownArgMatch) {
         const [, invalidArg, suggestedArg] = unknownArgMatch;
         return new HttpException(
           HttpStatus.BAD_REQUEST,
-          `Validation error: Invalid argument \`${invalidArg}\`. Did you mean \`${suggestedArg}\`?`
+          `Validation error: Invalid argument \`${invalidArg}\`. Did you mean \`${suggestedArg}\`?`,
         );
       }
 
@@ -74,7 +77,9 @@ export const formatPrismaError = (error: unknown): HttpException => {
       const fieldMatch = errorDetail.match(/Argument `([^`]+)`/) || [];
       const fieldName = fieldMatch[1] || "unknown field";
 
-      const requiredFieldsMatch = errorDetail.match(/needs at least one of ([^.]+)/);
+      const requiredFieldsMatch = errorDetail.match(
+        /needs at least one of ([^.]+)/,
+      );
       let requiredFields = "required arguments";
       if (requiredFieldsMatch && requiredFieldsMatch[1]) {
         requiredFields = requiredFieldsMatch[1]
@@ -85,10 +90,13 @@ export const formatPrismaError = (error: unknown): HttpException => {
           .join(" or ");
       }
 
-      if (fieldName !== "unknown field" && requiredFields !== "required arguments") {
+      if (
+        fieldName !== "unknown field" &&
+        requiredFields !== "required arguments"
+      ) {
         return new HttpException(
           HttpStatus.BAD_REQUEST,
-          `Validation error: The \`${fieldName}\` field requires at least one of: ${requiredFields}.`
+          `Validation error: The \`${fieldName}\` field requires at least one of: ${requiredFields}.`,
         );
       }
 
@@ -101,7 +109,7 @@ export const formatPrismaError = (error: unknown): HttpException => {
 
       return new HttpException(
         HttpStatus.BAD_REQUEST,
-        `Validation error: ${cleanMessage}`
+        `Validation error: ${cleanMessage}`,
       );
     }
 
@@ -112,14 +120,14 @@ export const formatPrismaError = (error: unknown): HttpException => {
           (line) =>
             !line.includes("invocation in") &&
             !line.startsWith("→") &&
-            line.length > 0
+            line.length > 0,
         )
         .join(" ")
         .trim() || "Invalid request format";
 
     return new HttpException(
       HttpStatus.BAD_REQUEST,
-      `Validation error: ${cleanMessage}`
+      `Validation error: ${cleanMessage}`,
     );
   }
 
@@ -130,7 +138,7 @@ export const formatPrismaError = (error: unknown): HttpException => {
   ) {
     return new HttpException(
       HttpStatus.INTERNAL_SERVER_ERROR,
-      "Database connection error. Please try again later."
+      "Database connection error. Please try again later.",
     );
   }
 
@@ -142,6 +150,6 @@ export const formatPrismaError = (error: unknown): HttpException => {
   // Fallback for unknown errors
   return new HttpException(
     HttpStatus.INTERNAL_SERVER_ERROR,
-    "An unexpected error occurred."
+    "An unexpected error occurred.",
   );
 };

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as leavePolicyHelper from "../helper/leavePolicyHelper";
 import { HttpStatus } from "../utils/http-status";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { LeavePolicy } from "../../generated/prisma";
+import { LeavePolicy } from "@prisma/client"
 
 // Create a leave policy
 export const createLeavePolicy = async (
@@ -14,7 +14,10 @@ export const createLeavePolicy = async (
   const userId = (req as any).user?.id; // assumes middleware added `user` to request object
 
   try {
-    const policy = await leavePolicyHelper.createLeavePolicy(policyData, userId);
+    const policy = await leavePolicyHelper.createLeavePolicy(
+      policyData,
+      userId,
+    );
     res.status(HttpStatus.CREATED).json({
       message: "Leave policy created successfully",
       data: policy,
@@ -67,7 +70,11 @@ export const updateLeavePolicy = async (
   const userId = (req as any).user?.id;
 
   try {
-    const updated = await leavePolicyHelper.updateLeavePolicy(leavePolicyId, policyData, userId);
+    const updated = await leavePolicyHelper.updateLeavePolicy(
+      leavePolicyId,
+      policyData,
+      userId,
+    );
     res.status(HttpStatus.OK).json({
       message: "Leave policy updated successfully",
       data: updated,
@@ -88,7 +95,10 @@ export const deleteLeavePolicy = async (
   const userId = (req as any).user?.id;
 
   try {
-    const result = await leavePolicyHelper.deleteLeavePolicy(leavePolicyId, userId);
+    const result = await leavePolicyHelper.deleteLeavePolicy(
+      leavePolicyId,
+      userId,
+    );
     res.status(HttpStatus.OK).json(result);
   } catch (error) {
     const err = formatPrismaError(error);

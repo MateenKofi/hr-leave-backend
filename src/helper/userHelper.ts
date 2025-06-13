@@ -1,7 +1,7 @@
 import prisma from "../utils/prisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { User } from "../../generated/prisma";
+import { User } from "@prisma/client";
 import { updateUserSchema, createUserSchema } from "../zodSchema/userSchema";
 import { hashPassword } from "../utils/bcrypt";
 import cloudinary from "../utils/cloudinary";

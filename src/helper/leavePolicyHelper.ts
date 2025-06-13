@@ -3,7 +3,7 @@ import prisma from "../utils/prisma";
 import { formatPrismaError } from "../utils/formatPrisma";
 import HttpException from "../utils/http-error";
 import { HttpStatus } from "../utils/http-status";
-import { LeavePolicy } from "../../generated/prisma";
+import { LeavePolicy } from "@prisma/client"
 import {
   createLeavePolicySchema,
   updateLeavePolicySchema,

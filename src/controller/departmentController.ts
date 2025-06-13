@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as departmentHelper from "../helper/departmentHelper";
 import { HttpStatus } from "../utils/http-status";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { Department } from "../../generated/prisma";
+import { Department } from "@prisma/client"
 
 // Create a department
 export const createDepartment = async (
@@ -68,7 +68,7 @@ export const updateDepartment = async (
   const { departmentId } = req.params;
   const departmentData: Partial<Department> = req.body;
   const userId = (req as any).user?.id;
-  
+
   try {
     const updated = await departmentHelper.updateDepartment(
       departmentId,

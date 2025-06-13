@@ -6,7 +6,7 @@ import {
   createDepartmentSchema,
   updateDepartmentSchema,
 } from "../zodSchema/departmentSchema";
-import { Department } from "../../generated/prisma";
+import { Department } from "@prisma/client";
 
 export const createDepartment = async (
   departmentData: Department,

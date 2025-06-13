@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import * as leaveHelper from "../helper/leaveHelper";
 import { HttpStatus } from "../utils/http-status";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { Leave } from "../../generated/prisma";
+import { Leave } from "@prisma/client"
 import { CreateLeaveDto, UpdateLeaveDto } from "../zodSchema/leaveSchema";
 
 // Create Leave

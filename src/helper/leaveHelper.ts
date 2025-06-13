@@ -7,7 +7,7 @@ import {
   UpdateLeaveDto,
   updateLeaveSchema,
 } from "../zodSchema/leaveSchema";
-import { LeaveStatus } from "../../generated/prisma";
+import { LeaveStatus } from "@prisma/client"
 import { formatPrismaError } from "../utils/formatPrisma";
 
 import { differenceInCalendarDays } from "date-fns";

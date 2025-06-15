@@ -10,7 +10,8 @@ export const validateUserEditAccess = (
   next: NextFunction
 ): void => {
   const user = req.user as UserPayload;
-  const targetUserId = req.params.targetUserId || req.body.userId || req.query.userId;
+  const targetUserId = req.params.userId || req.params.targetUserId || req.body.userId || req.query.userId;
+
 
   // If no target user ID is specified
   if (!targetUserId) {

@@ -40,7 +40,7 @@ leavePolicyRouter.use(
 
 // delete leave policy
 leavePolicyRouter.use(
-  "/delete",
+  "/delete/:leavePolicyId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "HR"]),
   deleteLeavePolicy,

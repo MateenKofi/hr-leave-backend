@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
@@ -30,18 +29,18 @@ enum LeaveType {
 }
 
 model User {
-  id              String     @id @default(uuid())
+  id              String      @id @default(uuid())
   name            String
-  email           String     @unique
+  email           String      @unique
   password        String
   phoneNumber     String?
-  role            UserRole   @default(EMPLOYEE)
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  role            UserRole    @default(EMPLOYEE)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   imageUrl        String
   imageKey        String
-  delFlag         Boolean    @default(false)
-  changedPassword Boolean    @default(false)
+  delFlag         Boolean     @default(false)
+  changedPassword Boolean     @default(false)
   dob             DateTime
   address         String?
   city            String?
@@ -120,10 +119,12 @@ model Leave {
   histories     LeaveHistory[]
   notifications Notification[]
 
-  approvedById String?
-  rejectedById String?
-  approver     User?   @relation("ApprovedLeaves", fields: [approvedById], references: [id])
-  rejecter     User?   @relation("RejectedLeaves", fields: [rejectedById], references: [id])
+  approvedById  String?
+  rejectedById  String?
+  approver      User?        @relation("ApprovedLeaves", fields: [approvedById], references: [id])
+  rejecter      User?        @relation("RejectedLeaves", fields: [rejectedById], references: [id])
+  leavePolicyId String?
+  leavePolicy   LeavePolicy? @relation(fields: [leavePolicyId], references: [id])
 
   // Auditing
   createdById String?
@@ -168,6 +169,7 @@ model LeavePolicy {
   createdBy   User?   @relation("CreatedLeavePolicies", fields: [createdById], references: [id])
   updatedBy   User?   @relation("UpdatedLeavePolicies", fields: [updatedById], references: [id])
   deletedBy   User?   @relation("DeletedLeavePolicies", fields: [deletedById], references: [id])
+  Leave       Leave[]
 }
 
 model Notification {

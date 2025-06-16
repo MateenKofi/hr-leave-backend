@@ -2,8 +2,7 @@
   {
     "modelName": "client",
     "fields": [
-      "provider",
-      "output"
+      "provider"
     ]
   },
   {
@@ -98,6 +97,7 @@
       "delFlag",
       "approvedById",
       "rejectedById",
+      "leavePolicyId",
       "Unnamed Field",
       "createdById",
       "updatedById",

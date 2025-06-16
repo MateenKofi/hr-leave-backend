@@ -107,6 +107,16 @@ export const updateLeave = async (
   if (!existingLeave) {
     throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
   }
+   //  Block updates if leave is already approved or rejected
+  if (
+    existingLeave.status === LeaveStatus.APPROVED ||
+    existingLeave.status === LeaveStatus.REJECTED
+  ) {
+    throw new HttpException(
+      HttpStatus.FORBIDDEN,
+      `Cannot update a leave that has been ${existingLeave.status.toLowerCase()}`
+    );
+  }
 
   const leaveType = leaveData.leaveType ?? existingLeave.leaveType;
   const startDate = leaveData.startDate ?? existingLeave.startDate;
@@ -297,7 +307,16 @@ export const deleteLeave = async (id: string, userId: string) => {
     const leave = await prisma.leave.findUnique({ where: { id } });
     if (!leave)
       throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
-
+  // 🚫 Block deletions if leave is already approved or rejected
+    if (
+      leave.status === LeaveStatus.APPROVED ||
+      leave.status === LeaveStatus.REJECTED
+    ) {
+      throw new HttpException(
+        HttpStatus.FORBIDDEN,
+        `Cannot delete a leave that has been ${leave.status.toLowerCase()}`
+      );
+    }
     await prisma.leave.update({
       where: { id },
       data: {

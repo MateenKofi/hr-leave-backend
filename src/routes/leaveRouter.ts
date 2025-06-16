@@ -53,8 +53,8 @@ leaveRouter.get(
   getLeavesByUserId,
 );
 // Get leaves by status
-leaveRouter.post(
-  "/get/status",
+leaveRouter.get(
+  "/get-by-status",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN"]),
   getLeavesByStatus,

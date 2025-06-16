@@ -14,8 +14,8 @@ dotenv.config();
 const app: Express = express();
 const port = process.env.PORT || 2020;
 app.use((req, res, next) => {
-  (req as any).rawBody = '';
-  req.on('data', (chunk: Buffer) => {
+  (req as any).rawBody = "";
+  req.on("data", (chunk: Buffer) => {
     (req as any).rawBody += chunk.toString();
   });
   next();
@@ -27,10 +27,10 @@ app.use(
     origin: [
       "http://localhost:8080",
       "https://hr-leave-system.vercel.app",
-      
+      "http://localhost:4040",
     ],
     credentials: true,
-  })
+  }),
 );
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");
@@ -65,13 +65,11 @@ const startServer = async () => {
     const err = error as ErrorResponse;
     throw new HttpException(
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Failed to start server"
+      err.message || "Failed to start server",
     );
-  }finally {
+  } finally {
     await prisma.$disconnect(); // Ensure Prisma client disconnects
   }
-
-  
 };
 
 startServer(); // Start the server

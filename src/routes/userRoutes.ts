@@ -35,7 +35,7 @@ userRouter.get(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN","HR", "ADMIN"]),
   getAllUsers,
-); // Only accessible by SuperAdmin
+); 
 
 // Get user by email
 userRouter.get(

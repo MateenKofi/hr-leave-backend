@@ -46,7 +46,7 @@ leaveRouter.get(
 );
 // Get leaves by user ID
 leaveRouter.get(
-  "/get/:userId",
+  "/get/user/:userId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE", "HR"]),
   validateUserEditAccess,

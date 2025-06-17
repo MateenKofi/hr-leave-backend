@@ -27,14 +27,14 @@ leaveRouter.post(
 leaveRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   getAllLeaves,
 );
 // Get all leaves history
 leaveRouter.get(
   "/get/history",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   getAllLeavesHistory,
 );
 // Get a leave by ID
@@ -56,7 +56,7 @@ leaveRouter.get(
 leaveRouter.get(
   "/get-by-status",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   getLeavesByStatus,
 );
 // Update a leave

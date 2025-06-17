@@ -33,7 +33,7 @@ userRouter.post(
 userRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["SUPER_ADMIN","HR", "ADMIN"]),
   getAllUsers,
 ); // Only accessible by SuperAdmin
 

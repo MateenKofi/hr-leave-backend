@@ -20,7 +20,7 @@ leavePolicyRouter.use(
 leavePolicyRouter.use(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR", "EMPLOYEE"]),
   getLeavePolicies,
 );
 // get leave policies by id

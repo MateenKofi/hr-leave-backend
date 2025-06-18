@@ -8,7 +8,8 @@ import { createAdminUser } from "./controller/adminPanel";
 import { ErrorResponse } from "./utils/types";
 import HttpException from "./utils/http-error";
 import { HttpStatus } from "./utils/http-status";
-// import * as swaggerDocs from './swagger.json'
+import swaggerUi from "swagger-ui-express";
+import * as swaggerDocs from "./swagger.json";
 dotenv.config();
 
 const app: Express = express();
@@ -36,7 +37,7 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");
 });
 
-// app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs))
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use("/api", mainRouter);
 

@@ -43,7 +43,7 @@ departmentRouter.put(
 departmentRouter.delete(
   "/delete/:departmentId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["SUPER_ADMIN","HR"]),
   deleteDepartment,
 );
 // Get all users from a department

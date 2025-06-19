@@ -21,7 +21,7 @@ export const validateUserEditAccess = (
   }
 
   // Allow if the logged-in user is a SUPER_ADMIN
-  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
+  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "HR") {
     return next();
   }
 

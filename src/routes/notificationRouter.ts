@@ -14,28 +14,28 @@ const notificationRouter = Router();
 notificationRouter.post(
   "/create",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   createNotification,
 );
 // Get all notifications for a user
 notificationRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE", "HR"]),
   getUserNotifications,
 );
 // Mark a notification as read
 notificationRouter.put(
   "/read/:notificationId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE","HR"]),
   markAsRead,
 );
 // Mark a notification as unread
 notificationRouter.put(
   "/unread/:notificationId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE","HR"]),
   markAsUnread,
 );
 
@@ -43,14 +43,14 @@ notificationRouter.put(
 notificationRouter.put(
   "/read/all",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE","HR"]),
   markAllAsRead,
 );
 // Delete a notification
 notificationRouter.delete(
   "/delete/:notificationId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE","HR"]),
   deleteNotification,
 );
 

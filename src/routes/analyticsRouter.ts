@@ -12,7 +12,7 @@ const analyticsRouter = Router();
 analyticsRouter.get(
   "/super-admin",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN"]),
+  authorizeRole(["SUPER_ADMIN","HR", "ADMIN"]),
   getSuperAdminAnalytics,
 );
 

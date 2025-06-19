@@ -25,7 +25,7 @@ userRouter.post(
   upload.single("photo"),
   validatePayload("User"), // Assuming you have validation logic for user payload
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   signUpUser,
 );
 
@@ -41,7 +41,7 @@ userRouter.get(
 userRouter.get(
   "/email",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "HR"]),
   validateUserEditAccess,
   getUserByEmail,
 );
@@ -50,7 +50,7 @@ userRouter.get(
 userRouter.get(
   "/get/:userId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   validateUserEditAccess,
 
   getUserById,
@@ -61,16 +61,17 @@ userRouter.put(
   "/update/:targetUserId",
   validatePayload("User"),
   upload.single("photo"),
+   authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   validateUserEditAccess,
 
   updateUser,
-);
-
+)
 // Delete user
 userRouter.delete(
   "/delete/:targetUserId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   validateUserEditAccess,
 
   deleteUser,
@@ -87,7 +88,7 @@ userRouter.post("/logout", authenticateJWT, logout);
 userRouter.get(
   "/get/department/:departmentId",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   validateUserEditAccess,
 
   usersForDepartment,

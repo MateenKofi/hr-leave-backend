@@ -25,7 +25,7 @@ export const getSuperAdminAnalytics = async (
   }
 };
 
-export const getHrAnalytics = async (
+export const getDepartmentAnalytics = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
@@ -40,7 +40,7 @@ export const getHrAnalytics = async (
       return;
     }
 
-    const analytics = await analyticsHelper.getHRAnalytics(user.departmentId);
+    const analytics = await analyticsHelper.departmentAnalytics(user.departmentId);
     res.status(HttpStatus.OK).json({
       success: true,
       message: "HR analytics retrieved successfully",

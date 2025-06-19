@@ -107,8 +107,8 @@ export const getSuperAdminAnalytics = async () => {
   };
 };
 
-// HR Analytics
-export const getHRAnalytics = async (departmentId: string) => {
+// deparment Analytics
+export const departmentAnalytics = async (departmentId: string) => {
   const now = new Date();
   const startOfThisYear = startOfYear(now);
   const endOfThisYear = endOfYear(now);

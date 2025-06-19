@@ -3,7 +3,7 @@ import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import {
   getSuperAdminAnalytics,
   getEmployeeAnalytics,
-  getHrAnalytics,
+  getDepartmentAnalytics,
 } from "../controller/analyticsController";
 
 const analyticsRouter = Router();
@@ -16,12 +16,12 @@ analyticsRouter.get(
   getSuperAdminAnalytics,
 );
 
-// HR analytics - accessible by HR and super admin
+// get department analytics - accessible by HR, Super Admin, and Admin
 analyticsRouter.get(
-  "/hr",
+  "/department",
   authenticateJWT,
   authorizeRole(["HR", "SUPER_ADMIN", "ADMIN"]),
-  getHrAnalytics,
+  getDepartmentAnalytics,
 );
 
 // Employee analytics - accessible by all authenticated users

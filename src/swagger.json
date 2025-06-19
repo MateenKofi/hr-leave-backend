@@ -918,10 +918,10 @@
         }
       }
     },
-    "/analytics/hr": {
+    "/analytics/deparment": {
       "get": {
         "tags": ["Analytics"],
-        "summary": "Get HR analytics",
+        "summary": "Get department analytics",
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Analytics data for HR" }

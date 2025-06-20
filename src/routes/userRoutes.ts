@@ -59,8 +59,8 @@ userRouter.get(
 // Update user
 userRouter.put(
   "/update/:targetUserId",
+   upload.single("photo"),
   validatePayload("User"),
-  upload.single("photo"),
    authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   validateUserEditAccess,

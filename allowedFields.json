@@ -9,7 +9,8 @@
     "modelName": "db",
     "fields": [
       "provider",
-      "url"
+      "url",
+      "directUrl"
     ]
   },
   {

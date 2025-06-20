@@ -62,7 +62,7 @@ userRouter.put(
    upload.single("photo"),
   validatePayload("User"),
    authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN","HR","EMPLOYEE"]),
   validateUserEditAccess,
 
   updateUser,

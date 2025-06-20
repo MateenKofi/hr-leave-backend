@@ -48,7 +48,7 @@ export const createUser = async (
 
 export const getUsers = async () => {
   try {
-    const users = await prisma.user.findMany({ include: { department: true } });
+    const users = await prisma.user.findMany({ where:{delFlag:false},include: { department: true } });
     return users as User[];
   } catch (error) {
     throw formatPrismaError(error);
@@ -58,7 +58,7 @@ export const getUsers = async () => {
 export const getUserById = async (id: string) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: { id ,delFlag: false},
       include: { department: true },
     });
     if (!user) {

@@ -48,6 +48,8 @@ model User {
   departmentId    String?
   department      Department? @relation(fields: [departmentId], references: [id])
   lastLogin       DateTime?
+  totalLeavesRemaining Int? 
+ 
 
   // Auditing
   createdById String?

@@ -60,6 +60,7 @@
       "city",
       "departmentId",
       "lastLogin",
+      "totalLeavesRemaining",
       "Unnamed Field",
       "createdById",
       "updatedById",

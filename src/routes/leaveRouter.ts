@@ -12,6 +12,7 @@ import {
   approveLeave,
   updateLeave,
   rejectLeave,
+  getRemainingDaysOnCurrentLeaveHandler,
 } from "../controller/leaveController";
 import { validateUserEditAccess } from "../utils/validateUserEditAccess";
 
@@ -27,14 +28,14 @@ leaveRouter.post(
 leaveRouter.get(
   "/get",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "HR"]),
   getAllLeaves,
 );
 // Get all leaves history
 leaveRouter.get(
   "/get/history",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "HR"]),
   getAllLeavesHistory,
 );
 // Get a leave by ID
@@ -56,7 +57,7 @@ leaveRouter.get(
 leaveRouter.get(
   "/get-by-status",
   authenticateJWT,
-  authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
+  authorizeRole(["SUPER_ADMIN", "ADMIN", "HR"]),
   getLeavesByStatus,
 );
 // Update a leave
@@ -88,6 +89,13 @@ leaveRouter.put(
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "HR"]),
   rejectLeave,
+);
+
+leaveRouter.get(
+  "/remaining/:leaveId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "HR", "ADMIN", "EMPLOYEE"]),
+  getRemainingDaysOnCurrentLeaveHandler,
 );
 
 export default leaveRouter;

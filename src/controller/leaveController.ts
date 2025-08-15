@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import * as leaveHelper from "../helper/leaveHelper";
 import { HttpStatus } from "../utils/http-status";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { Leave } from "@prisma/client"
+import { Leave } from "@prisma/client";
 import { CreateLeaveDto, UpdateLeaveDto } from "../zodSchema/leaveSchema";
 
 // Create Leave
@@ -144,6 +144,28 @@ export const getAllLeavesHistory = async (req: Request, res: Response) => {
   try {
     const leaves = await leaveHelper.getAllLeavesHistory();
     res.status(HttpStatus.OK).json(leaves);
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const getRemainingDaysOnCurrentLeaveHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  const userId = (req as any).user?.id;
+  const { leaveId } = req.params;
+
+  try {
+    const remainingDays = await leaveHelper.getRemainingDaysOnCurrentLeave(
+      userId,
+      leaveId,
+    );
+    res.status(HttpStatus.OK).json({
+      message: "Remaining days on current leave",
+      data: remainingDays,
+    });
   } catch (error) {
     const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });

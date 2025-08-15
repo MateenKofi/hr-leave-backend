@@ -7,7 +7,7 @@ import {
   UpdateLeaveDto,
   updateLeaveSchema,
 } from "../zodSchema/leaveSchema";
-import { LeaveStatus } from "@prisma/client"
+import { LeaveStatus } from "@prisma/client";
 import { formatPrismaError } from "../utils/formatPrisma";
 
 import { differenceInCalendarDays } from "date-fns";
@@ -29,14 +29,73 @@ export const createLeave = async (
   }
 
   try {
-    const { leaveType, startDate, endDate } = leaveData;
+    // Check if the user has ever requested leave
+    const existingLeaveRequests = await prisma.leave.findMany({
+      where: { userId, delFlag: false },
+    });
 
-    // Get leave policy for this type
-    const policy = await prisma.leavePolicy.findFirst({
+    // Check for the annual leave policy
+    const annualLeavePolicy = await prisma.leavePolicy.findFirst({
+      where: { leaveType: "ANNUAL", delFlag: false },
+    });
+    if (!annualLeavePolicy) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "No annual leave policy found",
+      );
+    }
+
+    const totalAnnualLeave = annualLeavePolicy.maxDays;
+
+    // If the user has never requested leave, assign total leaves based on the policy
+    if (existingLeaveRequests.length === 0) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          totalLeavesRemaining: totalAnnualLeave,
+        },
+      });
+    }
+
+    const { leaveType, startDate, endDate } = leaveData;
+    const isUserOnLeave = await prisma.leave.findFirst({
       where: {
-        leaveType,
+        userId,
         delFlag: false,
+        status: {
+          in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
+        },
+        OR: [
+          {
+            startDate: {
+              lte: new Date(endDate),
+            },
+            endDate: {
+              gte: new Date(startDate),
+            },
+          },
+          {
+            startDate: {
+              gte: new Date(startDate),
+            },
+            endDate: {
+              lte: new Date(endDate),
+            },
+          },
+        ],
       },
+    });
+
+    if (isUserOnLeave) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "You are already on leave during this period",
+      );
+    }
+
+    // Get the leave policy for the requested leave type
+    const policy = await prisma.leavePolicy.findFirst({
+      where: { leaveType, delFlag: false },
     });
 
     if (!policy) {
@@ -48,6 +107,7 @@ export const createLeave = async (
 
     const daysRequested =
       differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
+    await checkAnnualLeaveAvailability(userId, daysRequested);
 
     if (daysRequested > policy.maxDays) {
       throw new HttpException(
@@ -88,7 +148,31 @@ export const createLeave = async (
   }
 };
 
-//  Update Leave (status change triggers history)
+// Check for annual leave availability
+const checkAnnualLeaveAvailability = async (
+  userId: string,
+  requestedDays: number,
+) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (
+    !user ||
+    user.totalLeavesRemaining === null ||
+    user.totalLeavesRemaining === undefined
+  ) {
+    throw new HttpException(
+      HttpStatus.BAD_REQUEST,
+      "User annual leave information is missing or invalid",
+    );
+  }
+
+  if (user.totalLeavesRemaining < requestedDays) {
+    throw new HttpException(
+      HttpStatus.BAD_REQUEST,
+      "Insufficient annual leave days to request this leave",
+    );
+  }
+};
 
 export const updateLeave = async (
   id: string,
@@ -107,14 +191,14 @@ export const updateLeave = async (
   if (!existingLeave) {
     throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
   }
-   //  Block updates if leave is already approved or rejected
+  //  Block updates if leave is already approved or rejected
   if (
     existingLeave.status === LeaveStatus.APPROVED ||
     existingLeave.status === LeaveStatus.REJECTED
   ) {
     throw new HttpException(
       HttpStatus.FORBIDDEN,
-      `Cannot update a leave that has been ${existingLeave.status.toLowerCase()}`
+      `Cannot update a leave that has been ${existingLeave.status.toLowerCase()}`,
     );
   }
 
@@ -195,7 +279,35 @@ export const approveLeave = async (id: string, approverId: string) => {
       "HR cannot approve their own leave requests",
     );
   }
+  const daysRequested =
+    differenceInCalendarDays(
+      new Date(leave.endDate),
+      new Date(leave.startDate),
+    ) + 1;
+  const user = await prisma.user.findUnique({ where: { id: leave.userId } });
+  if (!user) {
+    throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
+  }
 
+  // Check if the user has enough annual leave to approve the request
+  if (
+    user.totalLeavesRemaining === null ||
+    user.totalLeavesRemaining === undefined ||
+    user.totalLeavesRemaining < daysRequested
+  ) {
+    throw new HttpException(
+      HttpStatus.BAD_REQUEST,
+      "User does not have enough annual leave for this request",
+    );
+  }
+
+  // Deduct the requested leave days from the user's available leave
+  await prisma.user.update({
+    where: { id: leave.userId },
+    data: {
+      totalLeavesRemaining: user.totalLeavesRemaining - daysRequested,
+    },
+  });
   const approved = await prisma.leave.update({
     where: { id },
     data: {
@@ -307,14 +419,14 @@ export const deleteLeave = async (id: string, userId: string) => {
     const leave = await prisma.leave.findUnique({ where: { id } });
     if (!leave)
       throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
-  // 🚫 Block deletions if leave is already approved or rejected
+    // 🚫 Block deletions if leave is already approved or rejected
     if (
       leave.status === LeaveStatus.APPROVED ||
       leave.status === LeaveStatus.REJECTED
     ) {
       throw new HttpException(
         HttpStatus.FORBIDDEN,
-        `Cannot delete a leave that has been ${leave.status.toLowerCase()}`
+        `Cannot delete a leave that has been ${leave.status.toLowerCase()}`,
       );
     }
     await prisma.leave.update({
@@ -376,6 +488,43 @@ export const getLeavesByStatus = async (status: LeaveStatus) => {
   } catch (error) {
     throw formatPrismaError(error);
   }
+};
+export const getRemainingDaysOnCurrentLeave = async (
+  userId: string,
+  leaveId: string,
+) => {
+  const leave = await prisma.leave.findUnique({
+    where: { id: leaveId },
+    include: { user: true },
+  });
+
+  if (!leave) {
+    throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
+  }
+  if (leave.status !== LeaveStatus.APPROVED) {
+    throw new HttpException(
+      HttpStatus.BAD_REQUEST,
+      "Leave has been Not been Approved",
+    );
+  }
+
+  // Check if the leave is still ongoing and if the leave user matches
+  if (leave.userId !== userId) {
+    throw new HttpException(
+      HttpStatus.FORBIDDEN,
+      "This leave does not belong to the user",
+    );
+  }
+
+  const daysRequested =
+    differenceInCalendarDays(
+      new Date(leave.endDate),
+      new Date(leave.startDate),
+    ) + 1;
+  const daysTaken =
+    differenceInCalendarDays(new Date(), new Date(leave.startDate)) + 1;
+
+  return daysRequested - daysTaken; // Returns the remaining days on the current leave
 };
 
 export const getAllLeavesHistory = async () => {

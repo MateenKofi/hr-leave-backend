@@ -323,6 +323,40 @@
         }
       }
     },
+     "/leaves/remaining/{leaveId}": {
+      "get": {
+        "tags": ["Leaves"],
+        "summary": "Get remaining leaves on current leave",
+        "parameters": [
+          {
+            "name": "leaveId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remaining leaves on current leave",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Leave"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/departments/create": {
       "post": {
         "tags": ["Departments"],

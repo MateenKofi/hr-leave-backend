@@ -38,6 +38,7 @@ const employeeId= await generateEmployeeId(userData.departmentId)
         imageKey: picture.imageKey,
         imageUrl: picture.imageUrl,
         createdById: userId,
+        employeeId: employeeId, 
       },
     });
     const { password, ...restOfUser } = newUser;

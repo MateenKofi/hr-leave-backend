@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -30,26 +30,26 @@ enum LeaveType {
 }
 
 model User {
-  id              String      @id @default(uuid())
-  name            String
-  email           String      @unique
-  password        String
-  phoneNumber     String?
-  role            UserRole    @default(EMPLOYEE)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  imageUrl        String
-  imageKey        String
-  delFlag         Boolean     @default(false)
-  changedPassword Boolean     @default(false)
-  dob             DateTime
-  address         String?
-  city            String?
-  departmentId    String?
-  department      Department? @relation(fields: [departmentId], references: [id])
-  lastLogin       DateTime?
-  totalLeavesRemaining Int? 
- 
+  id                   String      @id @default(uuid())
+  employeeId           String?    
+  name                 String
+  email                String      @unique
+  password             String
+  phoneNumber          String?
+  role                 UserRole    @default(EMPLOYEE)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  imageUrl             String
+  imageKey             String
+  delFlag              Boolean     @default(false)
+  changedPassword      Boolean     @default(false)
+  dob                  DateTime
+  address              String?
+  city                 String?
+  departmentId         String?
+  department           Department? @relation(fields: [departmentId], references: [id])
+  lastLogin            DateTime?
+  totalLeavesRemaining Int?
 
   // Auditing
   createdById String?

@@ -10,6 +10,8 @@ import HttpException from "./utils/http-error";
 import { HttpStatus } from "./utils/http-status";
 import swaggerUi from "swagger-ui-express";
 import * as swaggerDocs from "./swagger.json";
+import { scheduleCronJobs } from "./utils/cron-archive";
+import { scheduleEmailReminder } from "./utils/reminderCron";
 dotenv.config();
 
 const app: Express = express();
@@ -61,6 +63,9 @@ const startServer = async () => {
     await createAdminUser(); // Call the function to create the admin user
     app.listen(port, () => {
       console.log(`[server]: Server is running at http://localhost:${port}`);
+      scheduleCronJobs();
+      scheduleEmailReminder();
+
     });
   } catch (error) {
     const err = error as ErrorResponse;

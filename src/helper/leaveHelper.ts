@@ -65,6 +65,9 @@ export const createLeave = async (
         status: {
           in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
         },
+        endDate: {
+          gte: new Date(),
+        },
         OR: [
           {
             startDate: {
@@ -72,14 +75,6 @@ export const createLeave = async (
             },
             endDate: {
               gte: new Date(startDate),
-            },
-          },
-          {
-            startDate: {
-              gte: new Date(startDate),
-            },
-            endDate: {
-              lte: new Date(endDate),
             },
           },
         ],
@@ -263,7 +258,7 @@ export const updateLeave = async (
 };
 
 //  Approve Leave
-// Approve Leave
+
 export const approveLeave = async (id: string, approverId: string) => {
   const leave = await prisma.leave.findUnique({ where: { id } });
   if (!leave) throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
@@ -279,11 +274,28 @@ export const approveLeave = async (id: string, approverId: string) => {
       "HR cannot approve their own leave requests",
     );
   }
+
+  const requestedStartDate = new Date(leave.startDate);
+  const requestedEndDate = new Date(leave.endDate);
+  const approvalDate = new Date(); // Current date, when the leave is approved
+
+  // Check if approval date is after requested start date
+  let effectiveStartDate = requestedStartDate;
+
+  // If leave is approved after the requested start date, adjust the start date
+  if (approvalDate > requestedStartDate) {
+    effectiveStartDate = approvalDate;
+  }
+
+  // Calculate the days requested (we still keep the original requested dates for history, but adjust the counting period)
   const daysRequested =
-    differenceInCalendarDays(
-      new Date(leave.endDate),
-      new Date(leave.startDate),
-    ) + 1;
+    differenceInCalendarDays(requestedEndDate, requestedStartDate) + 1;
+  const daysBetweenApprovalAndRequestedStart = differenceInCalendarDays(
+    effectiveStartDate,
+    requestedStartDate,
+  );
+
+  // Ensure the user has enough leave available
   const user = await prisma.user.findUnique({ where: { id: leave.userId } });
   if (!user) {
     throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
@@ -301,22 +313,26 @@ export const approveLeave = async (id: string, approverId: string) => {
     );
   }
 
-  // Deduct the requested leave days from the user's available leave
+  // Deduct the requested leave days from the user's available leave (if not already deducted)
   await prisma.user.update({
     where: { id: leave.userId },
     data: {
       totalLeavesRemaining: user.totalLeavesRemaining - daysRequested,
     },
   });
-  const approved = await prisma.leave.update({
+
+  // Update the leave with the adjusted start date (if the approval date was delayed)
+  const updatedLeave = await prisma.leave.update({
     where: { id },
     data: {
       status: LeaveStatus.APPROVED,
       approvedById: approverId,
       updatedById: approverId,
+      startDate: effectiveStartDate, // Adjust the start date
     },
   });
 
+  // Create a history record for this approval
   await prisma.leaveHistory.create({
     data: {
       leaveId: id,
@@ -327,15 +343,16 @@ export const approveLeave = async (id: string, approverId: string) => {
     },
   });
 
+  // Send notification to the user
   await prisma.notification.create({
     data: {
       userId: leave.userId,
       leaveId: id,
-      message: "Your leave request has been approved",
+      message: `Your leave request has been approved and the start date is adjusted to ${effectiveStartDate.toDateString()}`,
     },
   });
 
-  return approved;
+  return updatedLeave;
 };
 
 //  Reject Leave
@@ -541,4 +558,57 @@ export const getAllLeavesHistory = async () => {
   } catch (error) {
     throw formatPrismaError(error);
   }
+};
+
+export const archiveExhaustedLeaves = async () => {
+  const today = new Date();
+
+  // Find all leaves that have ended before today and are not deleted
+  const exhaustedLeaves = await prisma.leave.findMany({
+    where: {
+      endDate: { lt: today },
+      delFlag: false,
+      status: LeaveStatus.APPROVED, // Optional: only approved leaves?
+    },
+  });
+
+  if (exhaustedLeaves.length === 0) {
+    console.log("No exhausted leaves to archive.");
+    return;
+  }
+
+  // Soft delete these leaves by setting delFlag: true
+  await prisma.leave.updateMany({
+    where: {
+      id: { in: exhaustedLeaves.map((leave) => leave.id) },
+    },
+    data: {
+      delFlag: true,
+    },
+  });
+
+  console.log(`Archived ${exhaustedLeaves.length} exhausted leaves.`);
+};
+
+
+
+
+export const isUserCurrentlyOnLeave = async (userId: string): Promise<boolean> => {
+  const leave = await prisma.leave.findFirst({
+    where: {
+      userId,
+      delFlag: false,
+      status: {
+        in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
+      },
+      startDate: {
+        lte: new Date(),  // leave has started on or before today
+      },
+      endDate: {
+        gte: new Date(),  // leave has not ended yet (today or later)
+      },
+    },
+  });
+
+  return leave !== null;
 };

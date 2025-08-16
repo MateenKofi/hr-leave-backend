@@ -8,6 +8,7 @@ import cloudinary from "../utils/cloudinary";
 import { jwtDecode } from "jwt-decode";
 import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { generateEmployeeId } from "../utils/generateEmployeeId";
 
 export const createUser = async (
   userData: User,
@@ -28,7 +29,7 @@ export const createUser = async (
     if (findUser) {
       throw new HttpException(HttpStatus.CONFLICT, "Email already exists");
     }
-
+const employeeId= await generateEmployeeId(userData.departmentId) 
     const hashedPassword = await hashPassword(userData.password);
     const newUser = await prisma.user.create({
       data: {

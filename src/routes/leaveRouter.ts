@@ -13,6 +13,7 @@ import {
   updateLeave,
   rejectLeave,
   getRemainingDaysOnCurrentLeaveHandler,
+  isUserOnLeave,
 } from "../controller/leaveController";
 import { validateUserEditAccess } from "../utils/validateUserEditAccess";
 
@@ -97,5 +98,7 @@ leaveRouter.get(
   authorizeRole(["SUPER_ADMIN", "HR", "ADMIN", "EMPLOYEE"]),
   getRemainingDaysOnCurrentLeaveHandler,
 );
+
+leaveRouter.get("/current/:userId", authenticateJWT, isUserOnLeave);
 
 export default leaveRouter;

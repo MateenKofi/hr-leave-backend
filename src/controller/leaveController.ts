@@ -171,3 +171,18 @@ export const getRemainingDaysOnCurrentLeaveHandler = async (
     res.status(err.status).json({ message: err.message });
   }
 };
+
+export const isUserOnLeave = async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+
+  try {
+    const isOnLeave = await leaveHelper.isUserCurrentlyOnLeave(userId);
+    res.status(HttpStatus.OK).json({
+      message: "User leave status",
+      data: isOnLeave,
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};

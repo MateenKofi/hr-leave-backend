@@ -11,6 +11,7 @@ import { LeaveStatus } from "@prisma/client";
 import { formatPrismaError } from "../utils/formatPrisma";
 
 import { differenceInCalendarDays } from "date-fns";
+import { sendEmail } from "../utils/nodeMailer";
 //  Create Leave
 export const createLeave = async (
   leaveData: CreateLeaveDto,
@@ -331,7 +332,7 @@ export const approveLeave = async (id: string, approverId: string) => {
       startDate: effectiveStartDate, // Adjust the start date
     },
   });
-
+  const start = updatedLeave.startDate;
   // Create a history record for this approval
   await prisma.leaveHistory.create({
     data: {
@@ -342,6 +343,17 @@ export const approveLeave = async (id: string, approverId: string) => {
       changedById: approverId,
     },
   });
+  const subject = "You Are Currently On Leave";
+  const htmlContent = `
+            <p>Hello ${user.name},</p>
+            <p>We hope you are having a restful time!</p>
+            <p>Your leave has been ap. It begins on ${start}.</p>
+            <p>Best regards,</p>
+            
+          `;
+
+  // Send email to the user
+  await sendEmail(user.email, subject, htmlContent);
 
   // Send notification to the user
   await prisma.notification.create({
@@ -436,7 +448,7 @@ export const deleteLeave = async (id: string, userId: string) => {
     const leave = await prisma.leave.findUnique({ where: { id } });
     if (!leave)
       throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
-    // 🚫 Block deletions if leave is already approved or rejected
+
     if (
       leave.status === LeaveStatus.APPROVED ||
       leave.status === LeaveStatus.REJECTED
@@ -590,10 +602,9 @@ export const archiveExhaustedLeaves = async () => {
   console.log(`Archived ${exhaustedLeaves.length} exhausted leaves.`);
 };
 
-
-
-
-export const isUserCurrentlyOnLeave = async (userId: string): Promise<boolean> => {
+export const isUserCurrentlyOnLeave = async (
+  userId: string,
+): Promise<boolean> => {
   const leave = await prisma.leave.findFirst({
     where: {
       userId,
@@ -602,10 +613,10 @@ export const isUserCurrentlyOnLeave = async (userId: string): Promise<boolean> =
         in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
       },
       startDate: {
-        lte: new Date(),  // leave has started on or before today
+        lte: new Date(), // leave has started on or before today
       },
       endDate: {
-        gte: new Date(),  // leave has not ended yet (today or later)
+        gte: new Date(), // leave has not ended yet (today or later)
       },
     },
   });

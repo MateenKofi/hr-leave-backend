@@ -173,8 +173,9 @@ export const getRemainingDaysOnCurrentLeaveHandler = async (
 };
 
 export const isUserOnLeave = async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+  const userId = req.params.userId;
 
+  console.log("userId", userId);
   try {
     const isOnLeave = await leaveHelper.isUserCurrentlyOnLeave(userId);
     res.status(HttpStatus.OK).json({

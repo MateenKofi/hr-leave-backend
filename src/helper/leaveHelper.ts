@@ -9,6 +9,7 @@ import {
 } from "../zodSchema/leaveSchema";
 import { LeaveStatus } from "@prisma/client";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { startOfDay, endOfDay } from 'date-fns';
 
 import { differenceInCalendarDays } from "date-fns";
 import { sendEmail } from "../utils/nodeMailer";
@@ -602,24 +603,34 @@ export const archiveExhaustedLeaves = async () => {
   console.log(`Archived ${exhaustedLeaves.length} exhausted leaves.`);
 };
 
-export const isUserCurrentlyOnLeave = async (
-  userId: string,
-): Promise<boolean> => {
-  const leave = await prisma.leave.findFirst({
-    where: {
-      userId,
-      delFlag: false,
-      status: {
-        in: [LeaveStatus.PENDING, LeaveStatus.APPROVED],
-      },
-      startDate: {
-        lte: new Date(), // leave has started on or before today
-      },
-      endDate: {
-        gte: new Date(), // leave has not ended yet (today or later)
-      },
-    },
-  });
+
+
+export const isUserCurrentlyOnLeave = async (userId: string) => {
+  
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  console.log("Start of today:", startOfToday.toISOString());
+
+  const today = new Date();
+today.setHours(0, 0, 0, 0); // normalize to midnight
+
+const leave = await prisma.leave.findFirst({
+  where: {
+    userId,
+    delFlag: false,
+    status: { in: ["APPROVED", "PENDING"] },
+    startDate: { lte: today },
+    endDate: { gte: today },
+  },
+});
+
+  console.log("Leaves from DB:", leave);
+
+ 
+
+  console.log("Matched leave:", leave);
 
   return leave !== null;
 };
+

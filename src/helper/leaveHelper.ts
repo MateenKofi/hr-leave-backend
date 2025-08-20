@@ -606,28 +606,19 @@ export const archiveExhaustedLeaves = async () => {
 
 
 export const isUserCurrentlyOnLeave = async (userId: string) => {
-  
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const now = new Date(); // actual current timestamp
 
-  console.log("Start of today:", startOfToday.toISOString());
+  console.log("Current time:", now.toISOString());
 
-  const today = new Date();
-today.setHours(0, 0, 0, 0); // normalize to midnight
-
-const leave = await prisma.leave.findFirst({
-  where: {
-    userId,
-    delFlag: false,
-    status: { in: ["APPROVED", "PENDING"] },
-    startDate: { lte: today },
-    endDate: { gte: today },
-  },
-});
-
-  console.log("Leaves from DB:", leave);
-
- 
+  const leave = await prisma.leave.findFirst({
+    where: {
+      userId,
+      delFlag: false,
+      status: { in: ["APPROVED", "PENDING"] },
+      startDate: { lte: now },  // leave must have started already
+      endDate: { gte: now },    // leave must not have ended yet
+    },
+  });
 
   console.log("Matched leave:", leave);
 

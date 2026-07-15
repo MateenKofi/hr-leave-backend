@@ -9,37 +9,36 @@ import {
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 
 const leavePolicyRouter = Router();
-// create leave policy
-leavePolicyRouter.use(
+
+leavePolicyRouter.post(
   "/create",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "HR"]),
   createLeavePolicy,
 );
-// get leave policies
-leavePolicyRouter.use(
+
+leavePolicyRouter.get(
   "/get",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN","HR", "EMPLOYEE"]),
   getLeavePolicies,
 );
-// get leave policies by id
-leavePolicyRouter.use(
+
+leavePolicyRouter.get(
   "/getid/:leavePolicyId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
   getLeavePolicyById,
 );
-// update leave policy
-leavePolicyRouter.use(
+
+leavePolicyRouter.put(
   "/update/:leavePolicyId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "HR"]),
   updateLeavePolicy,
 );
 
-// delete leave policy
-leavePolicyRouter.use(
+leavePolicyRouter.delete(
   "/delete/:leavePolicyId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "HR"]),

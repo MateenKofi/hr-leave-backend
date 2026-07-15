@@ -49,15 +49,15 @@ const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const morgan_1 = __importDefault(require("morgan"));
 const cors_1 = __importDefault(require("cors"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const routes_1 = __importDefault(require("./routes"));
-const prisma_1 = __importDefault(require("./utils/prisma"));
 const adminPanel_1 = require("./controller/adminPanel");
-const http_error_1 = __importDefault(require("./utils/http-error"));
 const http_status_1 = require("./utils/http-status");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swaggerDocs = __importStar(require("./swagger.json"));
 const cron_archive_1 = require("./utils/cron-archive");
 const reminderCron_1 = require("./utils/reminderCron");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 2020;
@@ -68,8 +68,23 @@ app.use((req, res, next) => {
     });
     next();
 });
-app.use(express_1.default.json());
+app.use(express_1.default.json({ limit: "1mb" }));
 app.use((0, morgan_1.default)("dev"));
+const loginLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { message: "Too many login attempts. Try again in 15 minutes." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const apiLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    message: { message: "Too many requests. Try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use("/api", apiLimiter);
 app.use((0, cors_1.default)({
     origin: [
         "http://localhost:8080",
@@ -81,7 +96,22 @@ app.use((0, cors_1.default)({
 app.get("/", (req, res) => {
     res.send("Express + TypeScript Server");
 });
-app.use("/docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocs));
+const swaggerAuth = (req, res, next) => {
+    const authHeader = req.header("Authorization");
+    const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1];
+    if (!token) {
+        res.status(http_status_1.HttpStatus.UNAUTHORIZED).json({ message: "Authentication required for API docs" });
+        return;
+    }
+    try {
+        jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        next();
+    }
+    catch (_a) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "Invalid token" });
+    }
+};
+app.use("/docs", swaggerAuth, swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocs));
 app.use("/api", routes_1.default);
 // Handle 404 errors
 app.use((req, res) => {
@@ -90,15 +120,15 @@ app.use((req, res) => {
     });
 });
 app.use((error, req, res, next) => {
-    console.log("error handler: ", error.status || 500, next);
-    res.status(error.status || 500).json({
-        status: error.status || 500,
-        error: error.message,
-    });
+    const status = error.status || 500;
+    const message = status === 500 ? "Internal server error" : error.message;
+    if (status === 500)
+        console.error("Unhandled error:", error);
+    res.status(status).json({ message });
 });
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        yield (0, adminPanel_1.createAdminUser)(); // Call the function to create the admin user
+        yield (0, adminPanel_1.createAdminUser)();
         app.listen(port, () => {
             console.log(`[server]: Server is running at http://localhost:${port}`);
             (0, cron_archive_1.scheduleCronJobs)();
@@ -107,10 +137,8 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     }
     catch (error) {
         const err = error;
-        throw new http_error_1.default(err.status || http_status_1.HttpStatus.INTERNAL_SERVER_ERROR, err.message || "Failed to start server");
-    }
-    finally {
-        yield prisma_1.default.$disconnect(); // Ensure Prisma client disconnects
+        console.error("Failed to start server:", err.message);
+        process.exit(1);
     }
 });
 startServer(); // Start the server

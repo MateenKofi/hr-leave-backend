@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:4500/api",
+      "url": "http://localhost:2020/api",
       "description": "Development server"
     },
     {
@@ -952,7 +952,7 @@
         }
       }
     },
-    "/analytics/deparment": {
+    "/analytics/department": {
       "get": {
         "tags": ["Analytics"],
         "summary": "Get department analytics",
@@ -1208,7 +1208,7 @@
             "type": "string",
             "enum": ["MATERNITY", "PATERNITY", "SICK", "EMERGENCY", "ANNUAL"]
           },
-          "maxLeaves": {
+          "maxDays": {
             "type": "integer"
           },
           "resetPeriod": {
@@ -1241,7 +1241,7 @@
             "type": "string",
             "enum": ["MATERNITY", "PATERNITY", "SICK", "EMERGENCY", "ANNUAL"]
           },
-          "maxLeaves": {
+          "maxDays": {
             "type": "integer"
           },
           "resetPeriod": {
@@ -1256,7 +1256,7 @@
           "name",
           "description",
           "leaveType",
-          "maxLeaves",
+          "maxDays",
           "resetPeriod",
           "carryForward"
         ]

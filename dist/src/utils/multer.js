@@ -8,6 +8,7 @@ const path_1 = __importDefault(require("path"));
 // Multer config
 const upload = (0, multer_1.default)({
     storage: multer_1.default.diskStorage({}),
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         // Allowable file extensions
         const allowedExt = [

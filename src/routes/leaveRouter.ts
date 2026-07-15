@@ -44,6 +44,7 @@ leaveRouter.get(
   "/get/:leaveId",
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN", "EMPLOYEE", "HR"]),
+  validateUserEditAccess,
   getLeaveById,
 );
 // Get leaves by user ID
@@ -99,6 +100,12 @@ leaveRouter.get(
   getRemainingDaysOnCurrentLeaveHandler,
 );
 
-leaveRouter.get("/current/:userId", authenticateJWT, isUserOnLeave);
+leaveRouter.get(
+  "/current/:userId",
+  authenticateJWT,
+  authorizeRole(["SUPER_ADMIN", "HR", "ADMIN", "EMPLOYEE"]),
+  validateUserEditAccess,
+  isUserOnLeave,
+);
 
 export default leaveRouter;

@@ -3,6 +3,7 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import HttpException from "./http-error";
 import { HttpStatus } from "./http-status";
 import { UserRole } from "@prisma/client";
+import { v4 as uuidv4 } from "uuid";
 
 export interface UserPayload {
   id: string;
@@ -18,6 +19,25 @@ declare global {
   }
 }
 
+const tokenBlacklist = new Map<string, number>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, expiry] of tokenBlacklist.entries()) {
+    if (expiry < now) tokenBlacklist.delete(token);
+  }
+}, 60 * 60 * 1000);
+
+export const invalidateToken = (token: string): void => {
+  try {
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    const expiry = decoded?.exp ? decoded.exp * 1000 : Date.now() + 3600000;
+    tokenBlacklist.set(token, expiry);
+  } catch {
+    tokenBlacklist.set(token, Date.now() + 3600000);
+  }
+};
+
 export const authenticateJWT = (
   req: Request,
   res: Response,
@@ -30,16 +50,34 @@ export const authenticateJWT = (
     return next(new HttpException(HttpStatus.FORBIDDEN, "No token found"));
   }
 
+  const blacklistEntry = tokenBlacklist.get(token);
+  if (blacklistEntry) {
+    if (blacklistEntry > Date.now()) {
+      return next(new HttpException(HttpStatus.UNAUTHORIZED, "Token has been invalidated"));
+    }
+    tokenBlacklist.delete(token);
+  }
+
   jwt.verify(token, process.env.JWT_SECRET as string, (err, decoded) => {
     if (err) {
       return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token"));
     }
 
-    if (decoded) {
-      const user = decoded as UserPayload;
-      req.user = user;
+    if (!decoded) {
+      return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token payload"));
     }
 
+    const payload = decoded as Record<string, unknown>;
+    if (typeof payload.id !== "string" || typeof payload.role !== "string") {
+      return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token payload"));
+    }
+
+    const user: UserPayload = {
+      id: payload.id,
+      role: payload.role as UserRole,
+      departmentId: payload.departmentId as string | undefined,
+    };
+    req.user = user;
     next();
   });
 };
@@ -55,9 +93,11 @@ export const signToken = (payload: UserPayload): string => {
     );
   }
 
-  return jwt.sign(payload, jwtSecret, {
-    expiresIn: jwtExpiresIn,
-  } as SignOptions);
+  return jwt.sign(
+    { ...payload, jti: uuidv4(), iss: "hr-leave-system", aud: "hr-leave-system-api" },
+    jwtSecret,
+    { expiresIn: jwtExpiresIn } as SignOptions,
+  );
 };
 
 export const setInvalidToken = (): string => {

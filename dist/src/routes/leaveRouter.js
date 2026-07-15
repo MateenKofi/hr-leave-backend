@@ -26,5 +26,5 @@ leaveRouter.put("/approve/:leaveId", jsonwebtoken_1.authenticateJWT, (0, jsonweb
 // Reject a leave
 leaveRouter.put("/reject/:leaveId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR"]), leaveController_1.rejectLeave);
 leaveRouter.get("/remaining/:leaveId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR", "ADMIN", "EMPLOYEE"]), leaveController_1.getRemainingDaysOnCurrentLeaveHandler);
-leaveRouter.get("/current/:userId", jsonwebtoken_1.authenticateJWT, leaveController_1.isUserOnLeave);
+leaveRouter.get("/current/:userId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR", "ADMIN", "EMPLOYEE"]), validateUserEditAccess_1.validateUserEditAccess, leaveController_1.isUserOnLeave);
 exports.default = leaveRouter;

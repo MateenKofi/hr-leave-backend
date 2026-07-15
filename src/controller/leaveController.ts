@@ -7,7 +7,12 @@ import { CreateLeaveDto, UpdateLeaveDto } from "../zodSchema/leaveSchema";
 
 // Create Leave
 export const createLeave = async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
   try {
     const data = req.body as CreateLeaveDto;
     const leaveData = {
@@ -50,7 +55,12 @@ export const updateLeave = async (req: Request, res: Response) => {
 // Approve Leave
 export const approveLeave = async (req: Request, res: Response) => {
   const { leaveId } = req.params;
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
 
   try {
     const result = await leaveHelper.approveLeave(leaveId, userId);
@@ -64,7 +74,12 @@ export const approveLeave = async (req: Request, res: Response) => {
 // Reject Leave
 export const rejectLeave = async (req: Request, res: Response) => {
   const { leaveId } = req.params;
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
 
   try {
     const result = await leaveHelper.rejectLeave(leaveId, userId);
@@ -78,7 +93,12 @@ export const rejectLeave = async (req: Request, res: Response) => {
 // Delete Leave
 export const deleteLeave = async (req: Request, res: Response) => {
   const { leaveId } = req.params;
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
 
   try {
     const result = await leaveHelper.deleteLeave(leaveId, userId);
@@ -127,7 +147,7 @@ export const getLeavesByUserId = async (req: Request, res: Response) => {
 
 // Get Leaves by Status
 export const getLeavesByStatus = async (req: Request, res: Response) => {
-  const { status } = req.body;
+  const { status } = req.query as { status: "PENDING" | "APPROVED" | "REJECTED" };
   const userId = (req as any).user?.id;
 
   try {
@@ -154,7 +174,12 @@ export const getRemainingDaysOnCurrentLeaveHandler = async (
   req: Request,
   res: Response,
 ) => {
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
   const { leaveId } = req.params;
 
   try {

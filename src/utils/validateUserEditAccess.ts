@@ -20,8 +20,13 @@ export const validateUserEditAccess = (
     );
   }
 
-  // Allow if the logged-in user is a SUPER_ADMIN
-  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "HR") {
+  // SUPER_ADMIN can edit anyone
+  if (user.role === "SUPER_ADMIN") {
+    return next();
+  }
+
+  // ADMIN can edit anyone except SUPER_ADMIN
+  if (user.role === "ADMIN" || user.role === "HR") {
     return next();
   }
 

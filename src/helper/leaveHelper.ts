@@ -104,7 +104,10 @@ export const createLeave = async (
 
     const daysRequested =
       differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
-    await checkAnnualLeaveAvailability(userId, daysRequested);
+
+    if (leaveType === "ANNUAL") {
+      await checkAnnualLeaveAvailability(userId, daysRequested);
+    }
 
     if (daysRequested > policy.maxDays) {
       throw new HttpException(
@@ -113,13 +116,15 @@ export const createLeave = async (
       );
     }
 
-    const leave = await prisma.leave.create({
-      data: {
-        ...leaveData,
-        userId,
-        createdById: userId,
-      },
-    });
+    const [leave] = await prisma.$transaction([
+      prisma.leave.create({
+        data: {
+          ...leaveData,
+          userId,
+          createdById: userId,
+        },
+      }),
+    ]);
 
     await prisma.leaveHistory.create({
       data: {
@@ -265,6 +270,13 @@ export const approveLeave = async (id: string, approverId: string) => {
   const leave = await prisma.leave.findUnique({ where: { id } });
   if (!leave) throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
 
+  if (leave.status !== LeaveStatus.PENDING) {
+    throw new HttpException(
+      HttpStatus.FORBIDDEN,
+      `Cannot approve a leave that has already been ${leave.status.toLowerCase()}`,
+    );
+  }
+
   const approver = await prisma.user.findUnique({ where: { id: approverId } });
   if (!approver)
     throw new HttpException(HttpStatus.NOT_FOUND, "Approver not found");
@@ -289,13 +301,20 @@ export const approveLeave = async (id: string, approverId: string) => {
     effectiveStartDate = approvalDate;
   }
 
-  // Calculate the days requested (we still keep the original requested dates for history, but adjust the counting period)
-  const daysRequested =
-    differenceInCalendarDays(requestedEndDate, requestedStartDate) + 1;
   const daysBetweenApprovalAndRequestedStart = differenceInCalendarDays(
     effectiveStartDate,
     requestedStartDate,
   );
+
+  const daysRequested =
+    differenceInCalendarDays(requestedEndDate, effectiveStartDate) + 1;
+
+  if (daysRequested <= 0) {
+    throw new HttpException(
+      HttpStatus.BAD_REQUEST,
+      "The leave period has already passed and cannot be approved.",
+    );
+  }
 
   // Ensure the user has enough leave available
   const user = await prisma.user.findUnique({ where: { id: leave.userId } });
@@ -303,67 +322,79 @@ export const approveLeave = async (id: string, approverId: string) => {
     throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
   }
 
-  // Check if the user has enough annual leave to approve the request
-  if (
-    user.totalLeavesRemaining === null ||
-    user.totalLeavesRemaining === undefined ||
-    user.totalLeavesRemaining < daysRequested
-  ) {
-    throw new HttpException(
-      HttpStatus.BAD_REQUEST,
-      "User does not have enough annual leave for this request",
+  // Check if the user has enough annual leave to approve the request (only for ANNUAL leave)
+  if (leave.leaveType === "ANNUAL") {
+    if (
+      user.totalLeavesRemaining === null ||
+      user.totalLeavesRemaining === undefined ||
+      user.totalLeavesRemaining < daysRequested
+    ) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "User does not have enough annual leave for this request",
+      );
+    }
+  }
+
+  // Update the leave with the adjusted start date (if the approval date was delayed)
+  const operations = [];
+
+  if (leave.leaveType === "ANNUAL") {
+    operations.push(
+      prisma.user.update({
+        where: { id: leave.userId },
+        data: {
+          totalLeavesRemaining: (user.totalLeavesRemaining ?? 0) - daysRequested,
+        },
+      }),
     );
   }
 
-  // Deduct the requested leave days from the user's available leave (if not already deducted)
-  await prisma.user.update({
-    where: { id: leave.userId },
-    data: {
-      totalLeavesRemaining: user.totalLeavesRemaining - daysRequested,
-    },
-  });
+  operations.push(
+    prisma.leave.update({
+      where: { id },
+      data: {
+        status: LeaveStatus.APPROVED,
+        approvedById: approverId,
+        updatedById: approverId,
+        startDate: effectiveStartDate,
+      },
+    }),
+    prisma.leaveHistory.create({
+      data: {
+        leaveId: id,
+        oldStatus: leave.status,
+        newStatus: LeaveStatus.APPROVED,
+        userId: leave.userId,
+        changedById: approverId,
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        userId: leave.userId,
+        leaveId: id,
+        message: `Your leave request has been approved and the start date is adjusted to ${effectiveStartDate.toDateString()}`,
+      },
+    }),
+  );
 
-  // Update the leave with the adjusted start date (if the approval date was delayed)
-  const updatedLeave = await prisma.leave.update({
-    where: { id },
-    data: {
-      status: LeaveStatus.APPROVED,
-      approvedById: approverId,
-      updatedById: approverId,
-      startDate: effectiveStartDate, // Adjust the start date
-    },
-  });
-  const start = updatedLeave.startDate;
-  // Create a history record for this approval
-  await prisma.leaveHistory.create({
-    data: {
-      leaveId: id,
-      oldStatus: leave.status,
-      newStatus: LeaveStatus.APPROVED,
-      userId: leave.userId,
-      changedById: approverId,
-    },
-  });
-  const subject = "You Are Currently On Leave";
+  await prisma.$transaction(operations);
+
+  const updatedLeave = await prisma.leave.findUnique({ where: { id } });
+  const subject = "Leave Approved";
   const htmlContent = `
             <p>Hello ${user.name},</p>
-            <p>We hope you are having a restful time!</p>
-            <p>Your leave has been ap. It begins on ${start}.</p>
+            <p>Your leave request has been approved.</p>
+            <p>Your leave begins on ${effectiveStartDate.toDateString()}.</p>
             <p>Best regards,</p>
-            
+            <p>HR Leave System</p>
           `;
 
-  // Send email to the user
-  await sendEmail(user.email, subject, htmlContent);
-
-  // Send notification to the user
-  await prisma.notification.create({
-    data: {
-      userId: leave.userId,
-      leaveId: id,
-      message: `Your leave request has been approved and the start date is adjusted to ${effectiveStartDate.toDateString()}`,
-    },
-  });
+  try {
+    await sendEmail(user.email, subject, htmlContent);
+  } catch (emailError) {
+    console.error(`Failed to send approval email to ${user.email}:`, emailError);
+  }
 
   return updatedLeave;
 };
@@ -372,6 +403,13 @@ export const approveLeave = async (id: string, approverId: string) => {
 export const rejectLeave = async (id: string, rejecterId: string) => {
   const leave = await prisma.leave.findUnique({ where: { id } });
   if (!leave) throw new HttpException(HttpStatus.NOT_FOUND, "Leave not found");
+
+  if (leave.status !== LeaveStatus.PENDING) {
+    throw new HttpException(
+      HttpStatus.FORBIDDEN,
+      `Cannot reject a leave that has already been ${leave.status.toLowerCase()}`,
+    );
+  }
 
   const rejector = await prisma.user.findUnique({ where: { id: rejecterId } });
   if (!rejector)
@@ -497,7 +535,7 @@ export const getLeavesByUserId = async (userId: string) => {
       },
     });
 
-    if (!leaves)
+    if (leaves.length === 0)
       throw new HttpException(
         HttpStatus.NOT_FOUND,
         "No leaves found for this user",
@@ -568,7 +606,7 @@ export const getRemainingDaysOnCurrentLeave = async (
   const daysTaken =
     differenceInCalendarDays(new Date(), new Date(leave.startDate)) + 1;
 
-  return daysRequested - daysTaken; // Returns the remaining days on the current leave
+  return Math.max(0, daysRequested - daysTaken); // Returns the remaining days on the current leave
 };
 
 export const getAllLeavesHistory = async () => {
@@ -628,7 +666,7 @@ export const isUserCurrentlyOnLeave = async (userId: string) => {
     where: {
       userId,
       delFlag: false,
-      status: { in: ["APPROVED", "PENDING"] },
+      status: { in: ["APPROVED"] },
       startDate: { lte: now },  // leave must have started already
       endDate: { gte: now },    // leave must not have ended yet
     },

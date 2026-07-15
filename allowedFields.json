@@ -62,12 +62,9 @@
       "departmentId",
       "lastLogin",
       "totalLeavesRemaining",
-      "Unnamed Field",
       "createdById",
       "updatedById",
-      "deletedById",
-      "Unnamed Field",
-      "Unnamed Field"
+      "deletedById"
     ]
   },
   {
@@ -79,7 +76,6 @@
       "createdAt",
       "updatedAt",
       "delFlag",
-      "Unnamed Field",
       "createdById",
       "updatedById",
       "deletedById"
@@ -101,7 +97,6 @@
       "approvedById",
       "rejectedById",
       "leavePolicyId",
-      "Unnamed Field",
       "createdById",
       "updatedById",
       "deletedById"
@@ -132,7 +127,6 @@
       "createdAt",
       "updatedAt",
       "delFlag",
-      "Unnamed Field",
       "createdById",
       "updatedById",
       "deletedById"

@@ -142,6 +142,11 @@ export const formatPrismaError = (error: unknown): HttpException => {
     );
   }
 
+  // Handle HttpException instances (pass through)
+  if (error instanceof HttpException) {
+    return error;
+  }
+
   // Handle generic errors
   if (error instanceof Error) {
     return new HttpException(HttpStatus.INTERNAL_SERVER_ERROR, error.message);

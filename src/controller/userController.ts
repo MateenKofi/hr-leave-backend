@@ -6,8 +6,7 @@ import cloudinary from "../utils/cloudinary";
 import * as userHelper from "../helper/userHelper"; // Assuming you have similar helper methods for users
 import { User } from "@prisma/client";
 import { compare } from "../utils/bcrypt";
-import { setInvalidToken, signToken, UserPayload } from "../utils/jsonwebtoken";
-import { jwtDecode } from "jwt-decode";
+import { setInvalidToken, signToken, UserPayload, invalidateToken } from "../utils/jsonwebtoken";
 import { getDepartmentById } from "../helper/departmentHelper";
 import prisma from "../utils/prisma";
 import { formatPrismaError } from "../utils/formatPrisma";
@@ -23,7 +22,12 @@ export const signUpUser = async (
     imageUrl: "",
     imageKey: "",
   };
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
 
   try {
     const rawUserData = {
@@ -47,7 +51,7 @@ export const signUpUser = async (
     }
     const newUser = await userHelper.createUser(rawUserData, userId, picture);
     res
-      .status(HttpStatus.OK)
+      .status(HttpStatus.CREATED)
       .json({ message: "User created successfully", user: newUser });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
@@ -77,7 +81,7 @@ export const getUserByEmail = async (
   next: NextFunction,
 ) => {
   try {
-    const { email } = req.body;
+    const { email } = req.query as { email: string };
     const user = await userHelper.getUserByEmail(email);
     res.status(HttpStatus.OK).json(user);
   } catch (error) {
@@ -109,7 +113,12 @@ export const updateUser = async (
   next: NextFunction,
 ) => {
   const { targetUserId } = req.params;
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
   const rawUserData = {
     ...req.body,
     dob: req.body.dob ? new Date(req.body.dob) : undefined,
@@ -152,13 +161,18 @@ export const deleteUser = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const userId = (req as any).user?.id;
+  const user = (req as any).user;
+  if (!user) {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
+  }
+  const userId = user.id;
   const { targetUserId } = req.params;
   try {
     await userHelper.deleteUser(targetUserId, userId);
     res
       .status(HttpStatus.OK)
-      .json({ message: `User deleted successfully: ${userId}` });
+      .json({ message: `User deleted successfully: ${targetUserId}` });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });
@@ -173,82 +187,44 @@ export const userLogIn = async (
 ): Promise<void> => {
   try {
     const { email, password } = req.body;
-    const authHeader = req.header("Authorization");
-    console.log("Authorization header:", authHeader);
-    const token = authHeader?.split(" ")[1]?.trim();
-    // Extract token from Authorization header
 
-    if (token) {
-      try {
-        // Decode and validate token
-        const decoded = jwtDecode<UserPayload & { exp: number }>(token);
-
-        const currentTime = Date.now() / 1000;
-        if (decoded.exp && decoded.exp > currentTime) {
-          // Token is valid, proceed to fetch user
-          const user = await userHelper.getUserById(decoded.id);
-          if (user) {
-            // Token is valid, send successful response
-            res.status(HttpStatus.OK).json({
-              message: "success logging in",
-              userId: user.id,
-              token,
-            });
-            // update the last login
-            const updateLogin = await prisma.user.update({
-              where: { id: user.id },
-              data: { lastLogin: new Date() },
-            });
-          } else {
-            // Token is valid but user does not exist anymore
-            throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
-          }
-        } else {
-          // Token has expired
-          res.status(HttpStatus.UNAUTHORIZED).json({
-            message: "Token expired. Please log in again.",
-          });
-        }
-      } catch (err) {
-        console.error("Invalid or expired token: ", err);
-        res.status(HttpStatus.UNAUTHORIZED).json({
-          message: "Invalid or expired token. Please log in again.",
-        });
-      }
+    if (!email || !password) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: "Email and password are required",
+      });
+      return;
     }
 
-    // If token is not provided or is invalid, attempt to log in with email and password
     const user = await userHelper.getUserByEmail(email);
     if (!user) {
       throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
     }
 
-    // Verify password match
     const isMatch = await compare(password, user.password);
     if (!isMatch) {
       throw new HttpException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     }
 
-    // Generate a new JWT token for the user
-    console.log("Login - User ID:", user.id);
     const newToken = signToken({
       id: user.id,
       role: user.role,
     });
 
-    // Successful login, return the user ID and new token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    const { password: _pw, ...userWithoutPassword } = user;
     res.status(HttpStatus.OK).json({
       userId: user.id,
       message: "login successful",
       token: newToken,
-    });
-    // update the last login
-    const updateLogin = await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
+      user: userWithoutPassword,
     });
   } catch (error) {
-    const err = formatPrismaError(error); // Ensure this function is used
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
   }
 };
 
@@ -258,21 +234,14 @@ export const getUserProfile = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const authHeader = req.header("Authorization");
-
-  const token = authHeader?.split(" ")[1];
-  if (token) {
-    const decoded = jwtDecode(token) as UserPayload;
-    const user = await userHelper.getUserById(decoded?.id);
-    if (user) {
-      const { password, ...restofUser } = user;
-      res.status(HttpStatus.OK).json({ restofUser });
-    } else {
-      res.status(HttpStatus.NOT_FOUND).json({ message: "User not found" });
-    }
-  } else {
+  const user = (req as any).user;
+  if (!user) {
     res.status(HttpStatus.FORBIDDEN).json({ message: "No token found" });
+    return;
   }
+  const profile = await userHelper.getUserById(user.id);
+  const { password: _pw, ...restofUser } = profile;
+  res.status(HttpStatus.OK).json(restofUser);
 };
 
 // User logout function
@@ -282,6 +251,11 @@ export const logout = async (
   next: NextFunction,
 ) => {
   try {
+    const authHeader = req.header("Authorization");
+    const token = authHeader?.split(" ")[1];
+    if (token) {
+      invalidateToken(token);
+    }
     setInvalidToken();
     res.status(HttpStatus.OK).json({ message: "Logout successful" });
   } catch (error) {
@@ -300,7 +274,7 @@ export const usersForDepartment = async (
     const users = await userHelper.getAllUsersForDepartment(departmentId);
     res
       .status(HttpStatus.OK)
-      .json({ message: "users fecthed successfully", data: users });
+      .json({ message: "users fetched successfully", data: users });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
     res.status(err.status).json({ message: err.message });

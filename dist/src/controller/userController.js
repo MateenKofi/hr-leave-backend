@@ -63,7 +63,6 @@ const cloudinary_1 = __importDefault(require("../utils/cloudinary"));
 const userHelper = __importStar(require("../helper/userHelper")); // Assuming you have similar helper methods for users
 const bcrypt_1 = require("../utils/bcrypt");
 const jsonwebtoken_1 = require("../utils/jsonwebtoken");
-const jwt_decode_1 = require("jwt-decode");
 const departmentHelper_1 = require("../helper/departmentHelper");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const formatPrisma_1 = require("../utils/formatPrisma");
@@ -193,83 +192,38 @@ const deleteUser = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
 exports.deleteUser = deleteUser;
 // User login function
 const userLogIn = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     try {
         const { email, password } = req.body;
-        const authHeader = req.header("Authorization");
-        console.log("Authorization header:", authHeader);
-        const token = (_a = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1]) === null || _a === void 0 ? void 0 : _a.trim();
-        // Extract token from Authorization header
-        if (token) {
-            try {
-                // Decode and validate token
-                const decoded = (0, jwt_decode_1.jwtDecode)(token);
-                const currentTime = Date.now() / 1000;
-                if (decoded.exp && decoded.exp > currentTime) {
-                    // Token is valid, proceed to fetch user
-                    const user = yield userHelper.getUserById(decoded.id);
-                    if (user) {
-                        // Token is valid, send successful response
-                        res.status(http_status_1.HttpStatus.OK).json({
-                            message: "success logging in",
-                            userId: user.id,
-                            token,
-                        });
-                        // update the last login
-                        const updateLogin = yield prisma_1.default.user.update({
-                            where: { id: user.id },
-                            data: { lastLogin: new Date() },
-                        });
-                    }
-                    else {
-                        // Token is valid but user does not exist anymore
-                        throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "User not found");
-                    }
-                }
-                else {
-                    // Token has expired
-                    res.status(http_status_1.HttpStatus.UNAUTHORIZED).json({
-                        message: "Token expired. Please log in again.",
-                    });
-                }
-            }
-            catch (err) {
-                console.error("Invalid or expired token: ", err);
-                res.status(http_status_1.HttpStatus.UNAUTHORIZED).json({
-                    message: "Invalid or expired token. Please log in again.",
-                });
-            }
+        if (!email || !password) {
+            res.status(http_status_1.HttpStatus.BAD_REQUEST).json({
+                message: "Email and password are required",
+            });
+            return;
         }
-        // If token is not provided or is invalid, attempt to log in with email and password
         const user = yield userHelper.getUserByEmail(email);
         if (!user) {
             throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "User not found");
         }
-        // Verify password match
         const isMatch = yield (0, bcrypt_1.compare)(password, user.password);
         if (!isMatch) {
             throw new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
-        // Generate a new JWT token for the user
-        console.log("Login - User ID:", user.id);
         const newToken = (0, jsonwebtoken_1.signToken)({
             id: user.id,
             role: user.role,
         });
-        // Successful login, return the user ID and new token
+        yield prisma_1.default.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() },
+        });
         res.status(http_status_1.HttpStatus.OK).json({
             userId: user.id,
             message: "login successful",
             token: newToken,
         });
-        // update the last login
-        const updateLogin = yield prisma_1.default.user.update({
-            where: { id: user.id },
-            data: { lastLogin: new Date() },
-        });
     }
     catch (error) {
-        const err = (0, formatPrisma_1.formatPrismaError)(error); // Ensure this function is used
+        const err = (0, formatPrisma_1.formatPrismaError)(error);
     }
 });
 exports.userLogIn = userLogIn;
@@ -278,7 +232,7 @@ const getUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     const authHeader = req.header("Authorization");
     const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1];
     if (token) {
-        const decoded = (0, jwt_decode_1.jwtDecode)(token);
+        const decoded = jwtDecode(token);
         const user = yield userHelper.getUserById(decoded === null || decoded === void 0 ? void 0 : decoded.id);
         if (user) {
             const { password } = user, restofUser = __rest(user, ["password"]);
@@ -296,6 +250,11 @@ exports.getUserProfile = getUserProfile;
 // User logout function
 const logout = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const authHeader = req.header("Authorization");
+        const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1];
+        if (token) {
+            (0, jsonwebtoken_1.invalidateToken)(token);
+        }
         (0, jsonwebtoken_1.setInvalidToken)();
         res.status(http_status_1.HttpStatus.OK).json({ message: "Logout successful" });
     }

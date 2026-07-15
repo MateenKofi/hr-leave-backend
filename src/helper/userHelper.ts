@@ -5,8 +5,6 @@ import { User } from "@prisma/client";
 import { updateUserSchema, createUserSchema } from "../zodSchema/userSchema";
 import { hashPassword } from "../utils/bcrypt";
 import cloudinary from "../utils/cloudinary";
-import { jwtDecode } from "jwt-decode";
-import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
 import { generateEmployeeId } from "../utils/generateEmployeeId";
 import { generatePassword } from "../utils/generatepass";
@@ -59,8 +57,8 @@ export const createUser = async (
     `;
     await sendEmail(newUser.email, subject, htmlContent);
 
-    const { password, ...restOfUser } = newUser;
-    return restOfUser as User;
+    const { password: _pw, ...restOfUser } = newUser;
+    return restOfUser;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -68,8 +66,11 @@ export const createUser = async (
 
 export const getUsers = async () => {
   try {
-    const users = await prisma.user.findMany({ where:{delFlag:false},include: { department: true } });
-    return users as User[];
+    const users = await prisma.user.findMany({
+      where: { delFlag: false },
+      include: { department: true },
+    });
+    return users;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -93,7 +94,7 @@ export const getUserById = async (id: string) => {
 export const getUserByEmail = async (email: string) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email, delFlag: false },
       include: { department: true },
     });
     return user;
@@ -164,44 +165,8 @@ export const updateUser = async (
       where: { id },
       data: { ...restOfUser, updatedById: userId },
     });
-    const { password, ...restOfUpdate } = updatedUser;
-    return restOfUpdate as User;
-  } catch (error) {
-    throw formatPrismaError(error);
-  }
-};
-
-export const getUserProfileHelper = async (authHeader: string) => {
-  try {
-    if (!authHeader) {
-      throw new HttpException(HttpStatus.FORBIDDEN, "No token provided");
-    }
-
-    const token = authHeader.split(" ")[1];
-    if (!token) {
-      throw new HttpException(HttpStatus.FORBIDDEN, "Invalid token format");
-    }
-
-    let decoded: UserPayload & { exp: number };
-    try {
-      decoded = jwtDecode<UserPayload & { exp: number }>(token);
-    } catch (error) {
-      throw new HttpException(HttpStatus.UNAUTHORIZED, "Invalid token");
-    }
-
-    const currentTime = Date.now() / 1000;
-    if (decoded?.exp < currentTime) {
-      throw new HttpException(HttpStatus.UNAUTHORIZED, "Token expired");
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-    });
-    if (!user) {
-      throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
-    }
-
-    return user;
+    const { password: _pw, ...restOfUpdate } = updatedUser;
+    return restOfUpdate;
   } catch (error) {
     throw formatPrismaError(error);
   }
@@ -210,7 +175,7 @@ export const getUserProfileHelper = async (authHeader: string) => {
 export const getAllUsersForDepartment = async (departmentId: string) => {
   try {
     const users = await prisma.user.findMany({
-      where: { departmentId },
+      where: { departmentId, delFlag: false },
     });
     return users;
   } catch (error) {

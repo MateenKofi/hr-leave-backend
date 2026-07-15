@@ -3,15 +3,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authorizeRole = exports.setInvalidToken = exports.signToken = exports.authenticateJWT = void 0;
+exports.authorizeRole = exports.setInvalidToken = exports.signToken = exports.authenticateJWT = exports.invalidateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const http_error_1 = __importDefault(require("./http-error"));
 const http_status_1 = require("./http-status");
+const uuid_1 = require("uuid");
+const tokenBlacklist = new Set();
+setInterval(() => {
+    if (tokenBlacklist.size > 1000)
+        tokenBlacklist.clear();
+}, 60 * 60 * 1000);
+const invalidateToken = (token) => {
+    tokenBlacklist.add(token);
+};
+exports.invalidateToken = invalidateToken;
 const authenticateJWT = (req, res, next) => {
     const authHeader = req.header("Authorization");
     const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1];
     if (!token) {
         return next(new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, "No token found"));
+    }
+    if (tokenBlacklist.has(token)) {
+        return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Token has been invalidated"));
     }
     jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
@@ -31,9 +44,7 @@ const signToken = (payload) => {
     if (!jwtSecret || !jwtExpiresIn) {
         throw new http_error_1.default(http_status_1.HttpStatus.INTERNAL_SERVER_ERROR, "JWT configuration is missing");
     }
-    return jsonwebtoken_1.default.sign(payload, jwtSecret, {
-        expiresIn: jwtExpiresIn,
-    });
+    return jsonwebtoken_1.default.sign(Object.assign(Object.assign({}, payload), { jti: (0, uuid_1.v4)(), iss: "hr-leave-system", aud: "hr-leave-system-api" }), jwtSecret, { expiresIn: jwtExpiresIn });
 };
 exports.signToken = signToken;
 const setInvalidToken = () => {

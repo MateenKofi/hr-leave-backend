@@ -2,6 +2,7 @@ import express, { Express, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import mainRouter from "./routes";
 import prisma from "./utils/prisma";
 import { createAdminUser } from "./controller/adminPanel";
@@ -12,19 +13,24 @@ import swaggerUi from "swagger-ui-express";
 import * as swaggerDocs from "./swagger.json";
 import { scheduleCronJobs } from "./utils/cron-archive";
 import { scheduleEmailReminder } from "./utils/reminderCron";
+import jwt from "jsonwebtoken";
 dotenv.config();
 
 const app: Express = express();
 const port = process.env.PORT || 2020;
-app.use((req, res, next) => {
-  (req as any).rawBody = "";
-  req.on("data", (chunk: Buffer) => {
-    (req as any).rawBody += chunk.toString();
-  });
-  next();
-});
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { message: "Too many requests. Try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api", apiLimiter);
+
 app.use(
   cors({
     origin: [
@@ -39,7 +45,24 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server");
 });
 
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+const swaggerAuth = (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.header("Authorization");
+  const token = authHeader?.split(" ")[1];
+
+  if (!token) {
+    res.status(HttpStatus.UNAUTHORIZED).json({ message: "Authentication required for API docs" });
+    return;
+  }
+
+  try {
+    jwt.verify(token, process.env.JWT_SECRET as string);
+    next();
+  } catch {
+    res.status(HttpStatus.FORBIDDEN).json({ message: "Invalid token" });
+  }
+};
+
+app.use("/docs", swaggerAuth, swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use("/api", mainRouter);
 
@@ -51,30 +74,27 @@ app.use((req: Request, res: Response) => {
 });
 
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
-  console.log("error handler: ", error.status || 500, next);
-  res.status(error.status || 500).json({
-    status: error.status || 500,
-    error: error.message,
-  });
+  if (res.headersSent) {
+    return next(error);
+  }
+  const status = error.status || 500;
+  const message = status === 500 ? "Internal server error" : error.message;
+  if (status === 500) console.error("Unhandled error:", error);
+  res.status(status).json({ message });
 });
 
 const startServer = async () => {
   try {
-    await createAdminUser(); // Call the function to create the admin user
+    await createAdminUser();
     app.listen(port, () => {
       console.log(`[server]: Server is running at http://localhost:${port}`);
       scheduleCronJobs();
       scheduleEmailReminder();
-
     });
   } catch (error) {
     const err = error as ErrorResponse;
-    throw new HttpException(
-      err.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      err.message || "Failed to start server",
-    );
-  } finally {
-    await prisma.$disconnect(); // Ensure Prisma client disconnects
+    console.error("Failed to start server:", err.message);
+    process.exit(1);
   }
 };
 

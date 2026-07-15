@@ -14,18 +14,26 @@ import upload from "../utils/multer";
 import { validatePayload } from "../middleware/validate-payload";
 import { authenticateJWT, authorizeRole } from "../utils/jsonwebtoken";
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { validateUserEditAccess } from "../utils/validateUserEditAccess";
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many login attempts. Try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const userRouter = Router();
 
 // User sign up
 userRouter.post(
   "/signup",
-
-  upload.single("photo"),
-  validatePayload("User"), // Assuming you have validation logic for user payload
   authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN","HR"]),
+  upload.single("photo"),
+  validatePayload("User"),
   signUpUser,
 );
 
@@ -59,12 +67,11 @@ userRouter.get(
 // Update user
 userRouter.put(
   "/update/:targetUserId",
-   upload.single("photo"),
-  validatePayload("User"),
-   authenticateJWT,
+  authenticateJWT,
   authorizeRole(["SUPER_ADMIN", "ADMIN","HR","EMPLOYEE"]),
   validateUserEditAccess,
-
+  upload.single("photo"),
+  validatePayload("User"),
   updateUser,
 )
 // Delete user
@@ -78,7 +85,7 @@ userRouter.delete(
 );
 
 // User login
-userRouter.post("/login", validatePayload("User"), userLogIn);
+userRouter.post("/login", loginLimiter, validatePayload("User"), userLogIn);
 
 // Get user profile
 userRouter.get("/profile", authenticateJWT, getUserProfile);

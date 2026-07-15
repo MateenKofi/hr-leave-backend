@@ -56,7 +56,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.usersForDepartment = exports.logout = exports.getUserProfile = exports.userLogIn = exports.deleteUser = exports.updateUser = exports.getUserById = exports.getUserByEmail = exports.getAllUsers = exports.signUpUser = void 0;
+exports.usersForDepartment = exports.resetPassword = exports.forgotPassword = exports.logout = exports.getUserProfile = exports.userLogIn = exports.deleteUser = exports.updateUser = exports.getUserById = exports.getUserByEmail = exports.getAllUsers = exports.signUpUser = void 0;
 const http_error_1 = __importDefault(require("../utils/http-error"));
 const http_status_1 = require("../utils/http-status");
 const cloudinary_1 = __importDefault(require("../utils/cloudinary"));
@@ -66,6 +66,8 @@ const jsonwebtoken_1 = require("../utils/jsonwebtoken");
 const departmentHelper_1 = require("../helper/departmentHelper");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const formatPrisma_1 = require("../utils/formatPrisma");
+const passwordResetSchema_1 = require("../zodSchema/passwordResetSchema");
+const passwordResetHelper = __importStar(require("../helper/passwordResetHelper"));
 // User registration function
 const signUpUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const photo = req.file ? req.file.path : undefined;
@@ -271,6 +273,44 @@ const logout = (req, res, next) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.logout = logout;
+const forgotPassword = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const parsed = passwordResetSchema_1.forgotPasswordSchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(http_status_1.HttpStatus.BAD_REQUEST).json({
+                message: parsed.error.issues.map(i => i.message).join(". "),
+            });
+            return;
+        }
+        yield passwordResetHelper.generateResetToken(parsed.data.email);
+        res.status(http_status_1.HttpStatus.OK).json({
+            message: "If an account with that email exists, a reset link has been sent.",
+        });
+    }
+    catch (error) {
+        const err = (0, formatPrisma_1.formatPrismaError)(error);
+        res.status(err.status).json({ message: err.message });
+    }
+});
+exports.forgotPassword = forgotPassword;
+const resetPassword = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const parsed = passwordResetSchema_1.resetPasswordSchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(http_status_1.HttpStatus.BAD_REQUEST).json({
+                message: parsed.error.issues.map(i => i.message).join(". "),
+            });
+            return;
+        }
+        yield passwordResetHelper.updatePassword(parsed.data.token, parsed.data.password);
+        res.status(http_status_1.HttpStatus.OK).json({ message: "Password reset successful" });
+    }
+    catch (error) {
+        const err = (0, formatPrisma_1.formatPrismaError)(error);
+        res.status(err.status).json({ message: err.message });
+    }
+});
+exports.resetPassword = resetPassword;
 const usersForDepartment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { departmentId } = req.params;
     try {

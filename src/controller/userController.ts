@@ -10,6 +10,8 @@ import { setInvalidToken, signToken, UserPayload, invalidateToken } from "../uti
 import { getDepartmentById } from "../helper/departmentHelper";
 import prisma from "../utils/prisma";
 import { formatPrismaError } from "../utils/formatPrisma";
+import { forgotPasswordSchema, resetPasswordSchema } from "../zodSchema/passwordResetSchema";
+import * as passwordResetHelper from "../helper/passwordResetHelper";
 
 // User registration function
 export const signUpUser = async (
@@ -260,6 +262,52 @@ export const logout = async (
     res.status(HttpStatus.OK).json({ message: "Logout successful" });
   } catch (error) {
     const err = formatPrismaError(error); // Ensure this function is used
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: parsed.error.issues.map(i => i.message).join(". "),
+      });
+      return;
+    }
+
+    await passwordResetHelper.generateResetToken(parsed.data.email);
+    res.status(HttpStatus.OK).json({
+      message: "If an account with that email exists, a reset link has been sent.",
+    });
+  } catch (error) {
+    const err = formatPrismaError(error);
+    res.status(err.status).json({ message: err.message });
+  }
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        message: parsed.error.issues.map(i => i.message).join(". "),
+      });
+      return;
+    }
+
+    await passwordResetHelper.updatePassword(parsed.data.token, parsed.data.password);
+    res.status(HttpStatus.OK).json({ message: "Password reset successful" });
+  } catch (error) {
+    const err = formatPrismaError(error);
     res.status(err.status).json({ message: err.message });
   }
 };

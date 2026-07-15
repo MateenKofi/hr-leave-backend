@@ -9,6 +9,8 @@ import {
   getUserProfile,
   logout,
   usersForDepartment,
+  forgotPassword,
+  resetPassword,
 } from "../controller/userController";
 import upload from "../utils/multer";
 import { validatePayload } from "../middleware/validate-payload";
@@ -92,6 +94,13 @@ userRouter.get("/profile", authenticateJWT, getUserProfile);
 
 // User logout
 userRouter.post("/logout", authenticateJWT, logout);
+
+// Forgot password
+userRouter.post("/forgot-password", forgotPassword);
+
+// Reset password
+userRouter.post("/reset-password", resetPassword);
+
 userRouter.get(
   "/get/department/:departmentId",
   authenticateJWT,

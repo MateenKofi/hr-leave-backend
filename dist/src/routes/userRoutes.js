@@ -36,5 +36,9 @@ userRouter.post("/login", loginLimiter, (0, validate_payload_1.validatePayload)(
 userRouter.get("/profile", jsonwebtoken_1.authenticateJWT, userController_1.getUserProfile);
 // User logout
 userRouter.post("/logout", jsonwebtoken_1.authenticateJWT, userController_1.logout);
+// Forgot password
+userRouter.post("/forgot-password", userController_1.forgotPassword);
+// Reset password
+userRouter.post("/reset-password", userController_1.resetPassword);
 userRouter.get("/get/department/:departmentId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), validateUserEditAccess_1.validateUserEditAccess, userController_1.usersForDepartment);
 exports.default = userRouter;

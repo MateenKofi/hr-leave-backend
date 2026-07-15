@@ -295,8 +295,8 @@ export const approveLeave = async (id: string, approverId: string) => {
   );
 
   const daysRequested = await calcWorkingDays(
-    requestedEndDate,
     effectiveStartDate,
+    requestedEndDate,
   );
 
   if (daysRequested <= 0) {

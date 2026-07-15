@@ -33,9 +33,7 @@ const generateResetToken = (email) => __awaiter(void 0, void 0, void 0, function
     yield prisma_1.default.passwordResetToken.create({
         data: { email, token, expiresAt },
     });
-    const frontendUrl = process.env.VITE_API_BASE_URL
-        ? process.env.VITE_API_BASE_URL.replace("/api", "")
-        : "http://localhost:4040";
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:4040";
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
     const subject = "Password Reset - HR Leave System";
     const htmlContent = `

@@ -92,19 +92,27 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   res.status(status).json({ message });
 });
 
+const isVercel = !!process.env.VERCEL;
+
 const startServer = async () => {
   try {
     await createAdminUser();
-    app.listen(port, () => {
-      console.log(`[server]: Server is running at http://localhost:${port}`);
-      scheduleCronJobs();
-      scheduleEmailReminder();
-    });
   } catch (error) {
     const err = error as ErrorResponse;
-    console.error("Failed to start server:", err.message);
-    process.exit(1);
+    console.error("Failed to create admin user:", err.message);
   }
+
+  app.listen(port, () => {
+    console.log(`[server]: Server is running at http://localhost:${port}`);
+    if (!isVercel) {
+      scheduleCronJobs();
+      scheduleEmailReminder();
+    }
+  });
 };
 
-startServer(); // Start the server
+if (!isVercel) {
+  startServer();
+}
+
+export default app;

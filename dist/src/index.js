@@ -59,6 +59,13 @@ const cron_archive_1 = require("./utils/cron-archive");
 const reminderCron_1 = require("./utils/reminderCron");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 dotenv_1.default.config();
+// Support custom database URL environment variables (e.g. from Vercel)
+if (process.env.hr_leave_PRISMA_DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.hr_leave_PRISMA_DATABASE_URL;
+}
+if (process.env.hr_leave_POSTGRES_URL) {
+    process.env.DIRECT_URL = process.env.hr_leave_POSTGRES_URL;
+}
 const app = (0, express_1.default)();
 const port = process.env.PORT || 2020;
 app.use(express_1.default.json({ limit: "1mb" }));

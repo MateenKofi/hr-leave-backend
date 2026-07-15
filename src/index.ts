@@ -16,6 +16,14 @@ import { scheduleEmailReminder } from "./utils/reminderCron";
 import jwt from "jsonwebtoken";
 dotenv.config();
 
+// Support custom database URL environment variables (e.g. from Vercel)
+if (process.env.hr_leave_PRISMA_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.hr_leave_PRISMA_DATABASE_URL;
+}
+if (process.env.hr_leave_POSTGRES_URL) {
+  process.env.DIRECT_URL = process.env.hr_leave_POSTGRES_URL;
+}
+
 const app: Express = express();
 const port = process.env.PORT || 2020;
 app.use(express.json({ limit: "1mb" }));

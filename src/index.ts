@@ -33,12 +33,7 @@ app.use("/api", apiLimiter);
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:8080",
-      "https://hr-leave-system.vercel.app",
-      "http://localhost:4040",
-    ],
-    credentials: true,
+    origin: "*",
   }),
 );
 app.get("/", (req: Request, res: Response) => {

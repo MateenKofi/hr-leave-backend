@@ -47,7 +47,7 @@ export const authenticateJWT = (
   const token = authHeader?.split(" ")[1];
 
   if (!token) {
-    return next(new HttpException(HttpStatus.FORBIDDEN, "No token found"));
+    return next(new HttpException(HttpStatus.UNAUTHORIZED, "No token found"));
   }
 
   const blacklistEntry = tokenBlacklist.get(token);
@@ -60,16 +60,16 @@ export const authenticateJWT = (
 
   jwt.verify(token, process.env.JWT_SECRET as string, (err, decoded) => {
     if (err) {
-      return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token"));
+      return next(new HttpException(HttpStatus.UNAUTHORIZED, "Invalid token"));
     }
 
     if (!decoded) {
-      return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token payload"));
+      return next(new HttpException(HttpStatus.UNAUTHORIZED, "Invalid token payload"));
     }
 
     const payload = decoded as Record<string, unknown>;
     if (typeof payload.id !== "string" || typeof payload.role !== "string") {
-      return next(new HttpException(HttpStatus.FORBIDDEN, "Invalid token payload"));
+      return next(new HttpException(HttpStatus.UNAUTHORIZED, "Invalid token payload"));
     }
 
     const user: UserPayload = {

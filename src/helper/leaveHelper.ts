@@ -13,6 +13,8 @@ import { startOfDay, endOfDay } from 'date-fns';
 
 import { differenceInCalendarDays } from "date-fns";
 import { sendEmail } from "../utils/nodeMailer";
+import { queueEmail } from "../utils/emailQueue";
+import { buildApprovalEmail, buildRejectionEmail } from "../utils/emailTemplates";
 //  Create Leave
 export const createLeave = async (
   leaveData: CreateLeaveDto,
@@ -381,20 +383,17 @@ export const approveLeave = async (id: string, approverId: string) => {
   await prisma.$transaction(operations);
 
   const updatedLeave = await prisma.leave.findUnique({ where: { id } });
-  const subject = "Leave Approved";
-  const htmlContent = `
-            <p>Hello ${user.name},</p>
-            <p>Your leave request has been approved.</p>
-            <p>Your leave begins on ${effectiveStartDate.toDateString()}.</p>
-            <p>Best regards,</p>
-            <p>HR Leave System</p>
-          `;
 
-  try {
-    await sendEmail(user.email, subject, htmlContent);
-  } catch (emailError) {
-    console.error(`Failed to send approval email to ${user.email}:`, emailError);
-  }
+  const { subject, html: htmlContent } = buildApprovalEmail(
+    user.name,
+    leave.leaveType,
+    effectiveStartDate,
+    requestedEndDate,
+    daysRequested,
+    leave.reason || "",
+    approver.name,
+  );
+  queueEmail(user.email, subject, htmlContent);
 
   return updatedLeave;
 };
@@ -445,15 +444,15 @@ export const rejectLeave = async (id: string, rejecterId: string) => {
   const user = await prisma.user.findUnique({ where: { id: leave.userId } });
 
   if (user) {
-    const subject = "Leave Request Rejected";
-    const htmlContent = `
-      <p>Hello ${user.name},</p>
-      <p>We regret to inform you that your leave request has been rejected.</p>
-      <p>Please contact your administrator for more details.</p>
-      <p>Best regards,</p>
-      <p>HR Leave System</p>
-    `;
-    await sendEmail(user.email, subject, htmlContent);
+    const { subject, html: htmlContent } = buildRejectionEmail(
+      user.name,
+      leave.leaveType,
+      leave.startDate,
+      leave.endDate,
+      leave.reason || "",
+      rejector.name,
+    );
+    queueEmail(user.email, subject, htmlContent);
   }
 
   await prisma.notification.create({

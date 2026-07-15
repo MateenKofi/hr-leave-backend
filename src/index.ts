@@ -33,7 +33,8 @@ app.use("/api", apiLimiter);
 
 app.use(
   cors({
-    origin: "*",
+    origin: (origin, callback) => callback(null, origin || true),
+    credentials: true,
   }),
 );
 app.get("/", (req: Request, res: Response) => {

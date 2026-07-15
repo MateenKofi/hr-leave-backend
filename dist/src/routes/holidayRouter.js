@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const jsonwebtoken_1 = require("../utils/jsonwebtoken");
+const holidayController_1 = require("../controller/holidayController");
+const holidayRouter = (0, express_1.Router)();
+holidayRouter.post("/create", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR"]), holidayController_1.createHoliday);
+holidayRouter.get("/get", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR", "EMPLOYEE"]), holidayController_1.getHolidays);
+holidayRouter.get("/get/:holidayId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), holidayController_1.getHolidayById);
+holidayRouter.put("/update/:holidayId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR"]), holidayController_1.updateHoliday);
+holidayRouter.delete("/delete/:holidayId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR"]), holidayController_1.deleteHoliday);
+holidayRouter.get("/working-days", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR", "EMPLOYEE"]), holidayController_1.getWorkingDays);
+exports.default = holidayRouter;

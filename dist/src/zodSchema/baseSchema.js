@@ -5,13 +5,7 @@ const zod_1 = require("zod");
 // Enums
 exports.UserRole = zod_1.z.enum(["ADMIN", "HR", "EMPLOYEE", "SUPER_ADMIN"]);
 exports.LeaveStatus = zod_1.z.enum(["PENDING", "APPROVED", "REJECTED"]);
-exports.LeaveType = zod_1.z.enum([
-    "MATERNITY",
-    "PATERNITY",
-    "SICK",
-    "EMERGENCY",
-    "ANNUAL",
-]);
+exports.LeaveType = zod_1.z.string().min(1, "Leave type is required");
 // Base schemas for common fields
 exports.baseEntitySchema = zod_1.z.object({
     id: zod_1.z.string().uuid().optional(), // optional for creation

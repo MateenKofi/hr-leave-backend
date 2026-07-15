@@ -273,43 +273,45 @@ const getEmployeeAnalytics = (userId) => __awaiter(void 0, void 0, void 0, funct
             },
         }),
     ]);
-    // Get leave policy information
+    // Get per-type leave balances from the LeaveBalance table
+    const balances = yield prisma_1.default.leaveBalance.findMany({
+        where: { userId, year: now.getFullYear() },
+    });
     const leavePolicies = yield prisma_1.default.leavePolicy.findMany({
-        where: { delFlag: false },
+        where: { delFlag: false, isActive: true },
         select: {
             leaveType: true,
+            displayName: true,
             maxDays: true,
+            isBalanceTracked: true,
         },
+        orderBy: { sortOrder: "asc" },
     });
-    // Calculate remaining leave days
-    const leaveBalance = yield Promise.all(leavePolicies.map((policy) => __awaiter(void 0, void 0, void 0, function* () {
-        const approvedLeaves = yield prisma_1.default.leave.findMany({
-            where: {
-                userId,
+    const leaveBalance = leavePolicies.map((policy) => {
+        const balance = balances.find((b) => b.leaveType === policy.leaveType);
+        if (policy.isBalanceTracked && balance) {
+            return {
                 leaveType: policy.leaveType,
-                status: client_1.LeaveStatus.APPROVED,
-                createdAt: {
-                    gte: startOfThisYear,
-                    lte: endOfThisYear,
-                },
-                delFlag: false,
-            },
-            select: {
-                startDate: true,
-                endDate: true,
-            },
-        });
-        const usedDays = approvedLeaves.reduce((sum, leave) => {
-            const days = (0, date_fns_1.differenceInDays)(leave.endDate, leave.startDate) + 1;
-            return sum + days;
-        }, 0);
+                displayName: policy.displayName,
+                maxDays: policy.maxDays,
+                entitled: balance.entitled,
+                used: balance.used,
+                pending: balance.pending,
+                carriedForward: balance.carriedForward,
+                available: balance.entitled + balance.carriedForward - balance.used - balance.pending,
+            };
+        }
         return {
             leaveType: policy.leaveType,
-            maxDays: policy.maxDays,
-            usedDays: usedDays,
-            remainingDays: policy.maxDays - usedDays,
+            displayName: policy.displayName,
+            maxDays: policy.isBalanceTracked ? policy.maxDays : null,
+            entitled: 0,
+            used: 0,
+            pending: 0,
+            carriedForward: 0,
+            available: null,
         };
-    })));
+    });
     return {
         totalLeavesTaken,
         leavesByStatus,

@@ -15,6 +15,13 @@ import { differenceInCalendarDays } from "date-fns";
 import { sendEmail } from "../utils/nodeMailer";
 import { queueEmail } from "../utils/emailQueue";
 import { buildApprovalEmail, buildRejectionEmail } from "../utils/emailTemplates";
+import { calcWorkingDays } from "../utils/leaveCalc";
+import {
+  reserveBalance,
+  releaseBalance,
+  consumeBalance,
+  getAvailable,
+} from "./leaveBalanceHelper";
 //  Create Leave
 export const createLeave = async (
   leaveData: CreateLeaveDto,
@@ -33,34 +40,6 @@ export const createLeave = async (
   }
 
   try {
-    // Check if the user has ever requested leave
-    const existingLeaveRequests = await prisma.leave.findMany({
-      where: { userId, delFlag: false },
-    });
-
-    // Check for the annual leave policy
-    const annualLeavePolicy = await prisma.leavePolicy.findFirst({
-      where: { leaveType: "ANNUAL", delFlag: false },
-    });
-    if (!annualLeavePolicy) {
-      throw new HttpException(
-        HttpStatus.BAD_REQUEST,
-        "No annual leave policy found",
-      );
-    }
-
-    const totalAnnualLeave = annualLeavePolicy.maxDays;
-
-    // If the user has never requested leave, assign total leaves based on the policy
-    if (existingLeaveRequests.length === 0) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          totalLeavesRemaining: totalAnnualLeave,
-        },
-      });
-    }
-
     const { leaveType, startDate, endDate } = leaveData;
     const isUserOnLeave = await prisma.leave.findFirst({
       where: {
@@ -104,18 +83,27 @@ export const createLeave = async (
       );
     }
 
-    const daysRequested =
-      differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
+    const daysRequested = await calcWorkingDays(
+      new Date(startDate),
+      new Date(endDate),
+    );
 
-    if (leaveType === "ANNUAL") {
-      await checkAnnualLeaveAvailability(userId, daysRequested);
+    if (daysRequested === 0) {
+      throw new HttpException(
+        HttpStatus.BAD_REQUEST,
+        "The selected date range contains no working days (excludes weekends and holidays).",
+      );
     }
 
     if (daysRequested > policy.maxDays) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        `Requested ${daysRequested} days, but policy only allows ${policy.maxDays} days for ${leaveType} leave`,
+        `Requested ${daysRequested} days, but policy only allows ${policy.maxDays} days for ${policy.displayName || leaveType} leave`,
       );
+    }
+
+    if (policy.isBalanceTracked) {
+      await reserveBalance(userId, leaveType, daysRequested);
     }
 
     const [leave] = await prisma.$transaction([
@@ -149,32 +137,6 @@ export const createLeave = async (
     return leave;
   } catch (error) {
     throw formatPrismaError(error);
-  }
-};
-
-// Check for annual leave availability
-const checkAnnualLeaveAvailability = async (
-  userId: string,
-  requestedDays: number,
-) => {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-
-  if (
-    !user ||
-    user.totalLeavesRemaining === null ||
-    user.totalLeavesRemaining === undefined
-  ) {
-    throw new HttpException(
-      HttpStatus.BAD_REQUEST,
-      "User annual leave information is missing or invalid",
-    );
-  }
-
-  if (user.totalLeavesRemaining < requestedDays) {
-    throw new HttpException(
-      HttpStatus.BAD_REQUEST,
-      "Insufficient annual leave days to request this leave",
-    );
   }
 };
 
@@ -222,14 +184,33 @@ export const updateLeave = async (
     );
   }
 
-  const daysRequested =
-    differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1;
+  const daysRequested = await calcWorkingDays(
+    new Date(startDate),
+    new Date(endDate),
+  );
+
+  if (daysRequested === 0) {
+    throw new HttpException(
+      HttpStatus.BAD_REQUEST,
+      "The selected date range contains no working days (excludes weekends and holidays).",
+    );
+  }
 
   if (daysRequested > policy.maxDays) {
     throw new HttpException(
       HttpStatus.BAD_REQUEST,
       `Requested ${daysRequested} days, but policy allows ${policy.maxDays} days for ${leaveType} leave`,
     );
+  }
+
+  const oldDays = await calcWorkingDays(
+    new Date(existingLeave.startDate),
+    new Date(existingLeave.endDate),
+  );
+
+  if (policy.isBalanceTracked && daysRequested > oldDays) {
+    const diff = daysRequested - oldDays;
+    await reserveBalance(existingLeave.userId, leaveType, diff);
   }
 
   const { status, ...restOfLeaveData } = leaveData;
@@ -241,6 +222,11 @@ export const updateLeave = async (
       updatedById: userId,
     },
   });
+
+  if (policy.isBalanceTracked && daysRequested < oldDays) {
+    const diff = oldDays - daysRequested;
+    await releaseBalance(existingLeave.userId, leaveType, diff);
+  }
 
   // Record history if status changed
   if (status && status !== existingLeave.status) {
@@ -308,8 +294,10 @@ export const approveLeave = async (id: string, approverId: string) => {
     requestedStartDate,
   );
 
-  const daysRequested =
-    differenceInCalendarDays(requestedEndDate, effectiveStartDate) + 1;
+  const daysRequested = await calcWorkingDays(
+    requestedEndDate,
+    effectiveStartDate,
+  );
 
   if (daysRequested <= 0) {
     throw new HttpException(
@@ -318,39 +306,34 @@ export const approveLeave = async (id: string, approverId: string) => {
     );
   }
 
-  // Ensure the user has enough leave available
+  // Ensure the user exists
   const user = await prisma.user.findUnique({ where: { id: leave.userId } });
   if (!user) {
     throw new HttpException(HttpStatus.NOT_FOUND, "User not found");
   }
 
-  // Check if the user has enough annual leave to approve the request (only for ANNUAL leave)
-  if (leave.leaveType === "ANNUAL") {
-    if (
-      user.totalLeavesRemaining === null ||
-      user.totalLeavesRemaining === undefined ||
-      user.totalLeavesRemaining < daysRequested
-    ) {
+  const policy = await prisma.leavePolicy.findFirst({
+    where: { leaveType: leave.leaveType, delFlag: false },
+  });
+
+  const originalDays = await calcWorkingDays(
+    requestedStartDate,
+    requestedEndDate,
+  );
+
+  if (policy?.isBalanceTracked) {
+    const available = await getAvailable(user.id, leave.leaveType);
+    const effectivelyAvailable = available + originalDays;
+    if (effectivelyAvailable < daysRequested) {
       throw new HttpException(
         HttpStatus.BAD_REQUEST,
-        "User does not have enough annual leave for this request",
+        `User does not have enough ${policy.displayName || leave.leaveType} leave for this request`,
       );
     }
   }
 
   // Update the leave with the adjusted start date (if the approval date was delayed)
   const operations = [];
-
-  if (leave.leaveType === "ANNUAL") {
-    operations.push(
-      prisma.user.update({
-        where: { id: leave.userId },
-        data: {
-          totalLeavesRemaining: (user.totalLeavesRemaining ?? 0) - daysRequested,
-        },
-      }),
-    );
-  }
 
   operations.push(
     prisma.leave.update({
@@ -381,6 +364,10 @@ export const approveLeave = async (id: string, approverId: string) => {
   );
 
   await prisma.$transaction(operations);
+
+  if (policy?.isBalanceTracked) {
+    await consumeBalance(user.id, leave.leaveType, originalDays, daysRequested);
+  }
 
   const updatedLeave = await prisma.leave.findUnique({ where: { id } });
 
@@ -463,6 +450,9 @@ export const rejectLeave = async (id: string, rejecterId: string) => {
     },
   });
 
+  const pendingDays = await calcWorkingDays(leave.startDate, leave.endDate);
+  await releaseBalance(leave.userId, leave.leaveType, pendingDays);
+
   return rejected;
 };
 // get all leaves
@@ -517,6 +507,9 @@ export const deleteLeave = async (id: string, userId: string) => {
         deletedById: userId,
       },
     });
+
+    const pendingDays = await calcWorkingDays(leave.startDate, leave.endDate);
+    await releaseBalance(leave.userId, leave.leaveType, pendingDays);
 
     return { message: "Leave deleted successfully" };
   } catch (error) {
@@ -597,15 +590,16 @@ export const getRemainingDaysOnCurrentLeave = async (
     );
   }
 
-  const daysRequested =
-    differenceInCalendarDays(
-      new Date(leave.endDate),
-      new Date(leave.startDate),
-    ) + 1;
-  const daysTaken =
-    differenceInCalendarDays(new Date(), new Date(leave.startDate)) + 1;
+  const daysRequested = await calcWorkingDays(
+    new Date(leave.startDate),
+    new Date(leave.endDate),
+  );
+  const daysTaken = await calcWorkingDays(
+    new Date(leave.startDate),
+    new Date(),
+  );
 
-  return Math.max(0, daysRequested - daysTaken); // Returns the remaining days on the current leave
+  return Math.max(0, daysRequested - daysTaken);
 };
 
 export const getAllLeavesHistory = async () => {

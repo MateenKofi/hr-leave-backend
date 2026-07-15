@@ -31,16 +31,6 @@
         ]
     },
     {
-        "modelName": "LeaveType",
-        "fields": [
-            "MATERNITY",
-            "PATERNITY",
-            "SICK",
-            "EMERGENCY",
-            "ANNUAL"
-        ]
-    },
-    {
         "modelName": "User",
         "fields": [
             "id",
@@ -62,9 +52,12 @@
             "departmentId",
             "lastLogin",
             "totalLeavesRemaining",
+            "Unnamed Field",
             "createdById",
             "updatedById",
-            "deletedById"
+            "deletedById",
+            "Unnamed Field",
+            "Unnamed Field"
         ]
     },
     {
@@ -76,6 +69,7 @@
             "createdAt",
             "updatedAt",
             "delFlag",
+            "Unnamed Field",
             "createdById",
             "updatedById",
             "deletedById"
@@ -97,6 +91,7 @@
             "approvedById",
             "rejectedById",
             "leavePolicyId",
+            "Unnamed Field",
             "createdById",
             "updatedById",
             "deletedById"
@@ -122,11 +117,28 @@
         "fields": [
             "id",
             "leaveType",
+            "displayName",
+            "description",
+            "category",
+            "color",
             "maxDays",
             "eligibility",
+            "accrualFrequency",
+            "accrualRate",
+            "carryForwardEnabled",
+            "carryForwardLimit",
+            "carryForwardExpiryMonths",
+            "advanceNoticeDays",
+            "maxConsecutiveDays",
+            "isDocumentRequired",
+            "documentThresholdDays",
+            "isBalanceTracked",
+            "isActive",
+            "sortOrder",
             "createdAt",
             "updatedAt",
             "delFlag",
+            "Unnamed Field",
             "createdById",
             "updatedById",
             "deletedById"
@@ -143,6 +155,23 @@
             "updatedAt",
             "delFlag",
             "isRead"
+        ]
+    },
+    {
+        "modelName": "Holiday",
+        "fields": [
+            "id",
+            "name",
+            "date",
+            "description",
+            "isRecurring",
+            "type",
+            "createdAt",
+            "updatedAt",
+            "delFlag",
+            "createdById",
+            "updatedById",
+            "deletedById"
         ]
     }
 ]

@@ -42,79 +42,76 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteLeavePolicy = exports.updateLeavePolicy = exports.getLeavePolicyById = exports.getLeavePolicies = exports.createLeavePolicy = void 0;
-const leavePolicyHelper = __importStar(require("../helper/leavePolicyHelper"));
+exports.getWorkingDays = exports.deleteHoliday = exports.updateHoliday = exports.getHolidayById = exports.getHolidays = exports.createHoliday = void 0;
+const holidayHelper = __importStar(require("../helper/holidayHelper"));
 const http_status_1 = require("../utils/http-status");
 const formatPrisma_1 = require("../utils/formatPrisma");
-// Create a leave policy
-const createLeavePolicy = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+const createHoliday = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const policyData = req.body;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    if (!userId) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
     try {
-        const policy = yield leavePolicyHelper.createLeavePolicy(policyData, userId);
-        res.status(http_status_1.HttpStatus.CREATED).json({
-            message: "Leave policy created successfully",
-            data: policy,
-        });
+        const data = req.body;
+        const holiday = yield holidayHelper.createHoliday(data, userId);
+        res
+            .status(http_status_1.HttpStatus.CREATED)
+            .json({ message: "Holiday created", data: holiday });
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error);
         res.status(err.status).json({ message: err.message });
     }
 });
-exports.createLeavePolicy = createLeavePolicy;
-// Get all leave policies
-const getLeavePolicies = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+exports.createHoliday = createHoliday;
+const getHolidays = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const policies = yield leavePolicyHelper.getLeavePolicies();
-        res.status(http_status_1.HttpStatus.OK).json(policies);
+        const holidays = yield holidayHelper.getHolidays();
+        res.status(http_status_1.HttpStatus.OK).json(holidays);
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error);
         res.status(err.status).json({ message: err.message });
     }
 });
-exports.getLeavePolicies = getLeavePolicies;
-// Get a leave policy by ID
-const getLeavePolicyById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { leavePolicyId } = req.params;
+exports.getHolidays = getHolidays;
+const getHolidayById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const policy = yield leavePolicyHelper.getLeavePolicyById(leavePolicyId);
-        res.status(http_status_1.HttpStatus.OK).json(policy);
+        const { holidayId } = req.params;
+        const holiday = yield holidayHelper.getHolidayById(holidayId);
+        res.status(http_status_1.HttpStatus.OK).json(holiday);
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error);
         res.status(err.status).json({ message: err.message });
     }
 });
-exports.getLeavePolicyById = getLeavePolicyById;
-// Update a leave policy
-const updateLeavePolicy = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+exports.getHolidayById = getHolidayById;
+const updateHoliday = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { leavePolicyId } = req.params;
-    const policyData = req.body;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const { holidayId } = req.params;
     try {
-        const updated = yield leavePolicyHelper.updateLeavePolicy(leavePolicyId, policyData, userId);
-        res.status(http_status_1.HttpStatus.OK).json({
-            message: "Leave policy updated successfully",
-            data: updated,
-        });
+        const data = req.body;
+        const updated = yield holidayHelper.updateHoliday(holidayId, data, userId);
+        res
+            .status(http_status_1.HttpStatus.OK)
+            .json({ message: "Holiday updated", data: updated });
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error);
         res.status(err.status).json({ message: err.message });
     }
 });
-exports.updateLeavePolicy = updateLeavePolicy;
-// Delete a leave policy
-const deleteLeavePolicy = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+exports.updateHoliday = updateHoliday;
+const deleteHoliday = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { leavePolicyId } = req.params;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const { holidayId } = req.params;
     try {
-        const result = yield leavePolicyHelper.deleteLeavePolicy(leavePolicyId, userId);
+        const result = yield holidayHelper.deleteHoliday(holidayId, userId);
         res.status(http_status_1.HttpStatus.OK).json(result);
     }
     catch (error) {
@@ -122,4 +119,22 @@ const deleteLeavePolicy = (req, res, next) => __awaiter(void 0, void 0, void 0, 
         res.status(err.status).json({ message: err.message });
     }
 });
-exports.deleteLeavePolicy = deleteLeavePolicy;
+exports.deleteHoliday = deleteHoliday;
+const getWorkingDays = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { startDate, endDate } = req.query;
+        if (!startDate || !endDate) {
+            res.status(http_status_1.HttpStatus.BAD_REQUEST).json({
+                message: "startDate and endDate query params are required",
+            });
+            return;
+        }
+        const result = yield holidayHelper.getWorkingDaysCount(startDate, endDate);
+        res.status(http_status_1.HttpStatus.OK).json(result);
+    }
+    catch (error) {
+        const err = (0, formatPrisma_1.formatPrismaError)(error);
+        res.status(err.status).json({ message: err.message });
+    }
+});
+exports.getWorkingDays = getWorkingDays;

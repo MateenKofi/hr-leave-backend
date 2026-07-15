@@ -3,13 +3,7 @@ import { z } from "zod";
 // Enums
 export const UserRole = z.enum(["ADMIN", "HR", "EMPLOYEE", "SUPER_ADMIN"]);
 export const LeaveStatus = z.enum(["PENDING", "APPROVED", "REJECTED"]);
-export const LeaveType = z.enum([
-  "MATERNITY",
-  "PATERNITY",
-  "SICK",
-  "EMERGENCY",
-  "ANNUAL",
-]);
+export const LeaveType = z.string().min(1, "Leave type is required");
 
 // Base schemas for common fields
 export const baseEntitySchema = z.object({

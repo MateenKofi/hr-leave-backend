@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import mainRouter from "./routes";
 import prisma from "./utils/prisma";
 import { createAdminUser } from "./controller/adminPanel";
+import { seedLeaveTypes } from "./utils/seedLeaveTypes";
 import { ErrorResponse } from "./utils/types";
 import HttpException from "./utils/http-error";
 import { HttpStatus } from "./utils/http-status";
@@ -13,6 +14,7 @@ import swaggerUi from "swagger-ui-express";
 import * as swaggerDocs from "./swagger.json";
 import { scheduleCronJobs } from "./utils/cron-archive";
 import { scheduleEmailReminder } from "./utils/reminderCron";
+import { scheduleBalanceCron } from "./utils/cron-balance";
 import jwt from "jsonwebtoken";
 dotenv.config();
 
@@ -92,6 +94,7 @@ const isVercel = !!process.env.VERCEL;
 const startServer = async () => {
   try {
     await createAdminUser();
+    await seedLeaveTypes();
   } catch (error) {
     const err = error as ErrorResponse;
     console.error("Failed to create admin user:", err.message);
@@ -102,6 +105,7 @@ const startServer = async () => {
     if (!isVercel) {
       scheduleCronJobs();
       scheduleEmailReminder();
+      scheduleBalanceCron();
     }
   });
 };

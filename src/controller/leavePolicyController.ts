@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as leavePolicyHelper from "../helper/leavePolicyHelper";
 import { HttpStatus } from "../utils/http-status";
 import { formatPrismaError } from "../utils/formatPrisma";
-import { LeavePolicy } from "@prisma/client"
+import { CreateLeavePolicyDto, UpdateLeavePolicyDto } from "../zodSchema/leavePolicySchema";
 
 // Create a leave policy
 export const createLeavePolicy = async (
@@ -10,8 +10,8 @@ export const createLeavePolicy = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const policyData: LeavePolicy = req.body;
-  const userId = (req as any).user?.id; // assumes middleware added `user` to request object
+  const policyData: CreateLeavePolicyDto = req.body;
+  const userId = (req as any).user?.id;
 
   try {
     const policy = await leavePolicyHelper.createLeavePolicy(
@@ -66,7 +66,7 @@ export const updateLeavePolicy = async (
   next: NextFunction,
 ) => {
   const { leavePolicyId } = req.params;
-  const policyData: Partial<LeavePolicy> = req.body;
+  const policyData: UpdateLeavePolicyDto = req.body;
   const userId = (req as any).user?.id;
 
   try {

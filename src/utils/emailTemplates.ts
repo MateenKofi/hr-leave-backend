@@ -1,5 +1,3 @@
-import { LeaveType } from "@prisma/client";
-
 const formatDate = (date: Date) =>
   date.toLocaleDateString("en-US", {
     weekday: "short",
@@ -42,7 +40,7 @@ const baseTemplate = (content: string) => `
 
 export const buildApprovalEmail = (
   employeeName: string,
-  leaveType: LeaveType,
+  leaveType: string,
   startDate: Date,
   endDate: Date,
   daysRequested: number,
@@ -76,7 +74,7 @@ export const buildApprovalEmail = (
 
 export const buildRejectionEmail = (
   employeeName: string,
-  leaveType: LeaveType,
+  leaveType: string,
   startDate: Date,
   endDate: Date,
   reason: string,

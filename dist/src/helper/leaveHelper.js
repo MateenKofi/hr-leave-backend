@@ -33,6 +33,8 @@ const formatPrisma_1 = require("../utils/formatPrisma");
 const date_fns_1 = require("date-fns");
 const emailQueue_1 = require("../utils/emailQueue");
 const emailTemplates_1 = require("../utils/emailTemplates");
+const leaveCalc_1 = require("../utils/leaveCalc");
+const leaveBalanceHelper_1 = require("./leaveBalanceHelper");
 //  Create Leave
 const createLeave = (leaveData, userId) => __awaiter(void 0, void 0, void 0, function* () {
     const validated = leaveSchema_1.createLeaveSchema.safeParse(leaveData);
@@ -44,27 +46,6 @@ const createLeave = (leaveData, userId) => __awaiter(void 0, void 0, void 0, fun
         throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "User ID is required");
     }
     try {
-        // Check if the user has ever requested leave
-        const existingLeaveRequests = yield prisma_1.default.leave.findMany({
-            where: { userId, delFlag: false },
-        });
-        // Check for the annual leave policy
-        const annualLeavePolicy = yield prisma_1.default.leavePolicy.findFirst({
-            where: { leaveType: "ANNUAL", delFlag: false },
-        });
-        if (!annualLeavePolicy) {
-            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "No annual leave policy found");
-        }
-        const totalAnnualLeave = annualLeavePolicy.maxDays;
-        // If the user has never requested leave, assign total leaves based on the policy
-        if (existingLeaveRequests.length === 0) {
-            yield prisma_1.default.user.update({
-                where: { id: userId },
-                data: {
-                    totalLeavesRemaining: totalAnnualLeave,
-                },
-            });
-        }
         const { leaveType, startDate, endDate } = leaveData;
         const isUserOnLeave = yield prisma_1.default.leave.findFirst({
             where: {
@@ -98,12 +79,15 @@ const createLeave = (leaveData, userId) => __awaiter(void 0, void 0, void 0, fun
         if (!policy) {
             throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `No policy found for ${leaveType} leave`);
         }
-        const daysRequested = (0, date_fns_1.differenceInCalendarDays)(new Date(endDate), new Date(startDate)) + 1;
-        if (leaveType === "ANNUAL") {
-            yield checkAnnualLeaveAvailability(userId, daysRequested);
+        const daysRequested = yield (0, leaveCalc_1.calcWorkingDays)(new Date(startDate), new Date(endDate));
+        if (daysRequested === 0) {
+            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "The selected date range contains no working days (excludes weekends and holidays).");
         }
         if (daysRequested > policy.maxDays) {
-            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `Requested ${daysRequested} days, but policy only allows ${policy.maxDays} days for ${leaveType} leave`);
+            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `Requested ${daysRequested} days, but policy only allows ${policy.maxDays} days for ${policy.displayName || leaveType} leave`);
+        }
+        if (policy.isBalanceTracked) {
+            yield (0, leaveBalanceHelper_1.reserveBalance)(userId, leaveType, daysRequested);
         }
         const [leave] = yield prisma_1.default.$transaction([
             prisma_1.default.leave.create({
@@ -133,18 +117,6 @@ const createLeave = (leaveData, userId) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.createLeave = createLeave;
-// Check for annual leave availability
-const checkAnnualLeaveAvailability = (userId, requestedDays) => __awaiter(void 0, void 0, void 0, function* () {
-    const user = yield prisma_1.default.user.findUnique({ where: { id: userId } });
-    if (!user ||
-        user.totalLeavesRemaining === null ||
-        user.totalLeavesRemaining === undefined) {
-        throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "User annual leave information is missing or invalid");
-    }
-    if (user.totalLeavesRemaining < requestedDays) {
-        throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "Insufficient annual leave days to request this leave");
-    }
-});
 const updateLeave = (id, leaveData, userId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
     const validated = leaveSchema_1.updateLeaveSchema.safeParse(leaveData);
@@ -171,15 +143,27 @@ const updateLeave = (id, leaveData, userId) => __awaiter(void 0, void 0, void 0,
     if (!policy) {
         throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `No policy found for ${leaveType} leave`);
     }
-    const daysRequested = (0, date_fns_1.differenceInCalendarDays)(new Date(endDate), new Date(startDate)) + 1;
+    const daysRequested = yield (0, leaveCalc_1.calcWorkingDays)(new Date(startDate), new Date(endDate));
+    if (daysRequested === 0) {
+        throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "The selected date range contains no working days (excludes weekends and holidays).");
+    }
     if (daysRequested > policy.maxDays) {
         throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `Requested ${daysRequested} days, but policy allows ${policy.maxDays} days for ${leaveType} leave`);
+    }
+    const oldDays = yield (0, leaveCalc_1.calcWorkingDays)(new Date(existingLeave.startDate), new Date(existingLeave.endDate));
+    if (policy.isBalanceTracked && daysRequested > oldDays) {
+        const diff = daysRequested - oldDays;
+        yield (0, leaveBalanceHelper_1.reserveBalance)(existingLeave.userId, leaveType, diff);
     }
     const { status } = leaveData, restOfLeaveData = __rest(leaveData, ["status"]);
     const updated = yield prisma_1.default.leave.update({
         where: { id },
         data: Object.assign(Object.assign({}, restOfLeaveData), { updatedById: userId }),
     });
+    if (policy.isBalanceTracked && daysRequested < oldDays) {
+        const diff = oldDays - daysRequested;
+        yield (0, leaveBalanceHelper_1.releaseBalance)(existingLeave.userId, leaveType, diff);
+    }
     // Record history if status changed
     if (status && status !== existingLeave.status) {
         yield prisma_1.default.leaveHistory.create({
@@ -204,7 +188,6 @@ const updateLeave = (id, leaveData, userId) => __awaiter(void 0, void 0, void 0,
 exports.updateLeave = updateLeave;
 //  Approve Leave
 const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const leave = yield prisma_1.default.leave.findUnique({ where: { id } });
     if (!leave)
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "Leave not found");
@@ -228,33 +211,28 @@ const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, funct
         effectiveStartDate = approvalDate;
     }
     const daysBetweenApprovalAndRequestedStart = (0, date_fns_1.differenceInCalendarDays)(effectiveStartDate, requestedStartDate);
-    const daysRequested = (0, date_fns_1.differenceInCalendarDays)(requestedEndDate, effectiveStartDate) + 1;
+    const daysRequested = yield (0, leaveCalc_1.calcWorkingDays)(requestedEndDate, effectiveStartDate);
     if (daysRequested <= 0) {
         throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "The leave period has already passed and cannot be approved.");
     }
-    // Ensure the user has enough leave available
+    // Ensure the user exists
     const user = yield prisma_1.default.user.findUnique({ where: { id: leave.userId } });
     if (!user) {
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "User not found");
     }
-    // Check if the user has enough annual leave to approve the request (only for ANNUAL leave)
-    if (leave.leaveType === "ANNUAL") {
-        if (user.totalLeavesRemaining === null ||
-            user.totalLeavesRemaining === undefined ||
-            user.totalLeavesRemaining < daysRequested) {
-            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "User does not have enough annual leave for this request");
+    const policy = yield prisma_1.default.leavePolicy.findFirst({
+        where: { leaveType: leave.leaveType, delFlag: false },
+    });
+    const originalDays = yield (0, leaveCalc_1.calcWorkingDays)(requestedStartDate, requestedEndDate);
+    if (policy === null || policy === void 0 ? void 0 : policy.isBalanceTracked) {
+        const available = yield (0, leaveBalanceHelper_1.getAvailable)(user.id, leave.leaveType);
+        const effectivelyAvailable = available + originalDays;
+        if (effectivelyAvailable < daysRequested) {
+            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `User does not have enough ${policy.displayName || leave.leaveType} leave for this request`);
         }
     }
     // Update the leave with the adjusted start date (if the approval date was delayed)
     const operations = [];
-    if (leave.leaveType === "ANNUAL") {
-        operations.push(prisma_1.default.user.update({
-            where: { id: leave.userId },
-            data: {
-                totalLeavesRemaining: ((_a = user.totalLeavesRemaining) !== null && _a !== void 0 ? _a : 0) - daysRequested,
-            },
-        }));
-    }
     operations.push(prisma_1.default.leave.update({
         where: { id },
         data: {
@@ -279,6 +257,9 @@ const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, funct
         },
     }));
     yield prisma_1.default.$transaction(operations);
+    if (policy === null || policy === void 0 ? void 0 : policy.isBalanceTracked) {
+        yield (0, leaveBalanceHelper_1.consumeBalance)(user.id, leave.leaveType, originalDays, daysRequested);
+    }
     const updatedLeave = yield prisma_1.default.leave.findUnique({ where: { id } });
     const { subject, html: htmlContent } = (0, emailTemplates_1.buildApprovalEmail)(user.name, leave.leaveType, effectiveStartDate, requestedEndDate, daysRequested, leave.reason || "", approver.name);
     (0, emailQueue_1.queueEmail)(user.email, subject, htmlContent);
@@ -329,6 +310,8 @@ const rejectLeave = (id, rejecterId) => __awaiter(void 0, void 0, void 0, functi
             message: "Your leave request has been rejected",
         },
     });
+    const pendingDays = yield (0, leaveCalc_1.calcWorkingDays)(leave.startDate, leave.endDate);
+    yield (0, leaveBalanceHelper_1.releaseBalance)(leave.userId, leave.leaveType, pendingDays);
     return rejected;
 });
 exports.rejectLeave = rejectLeave;
@@ -379,6 +362,8 @@ const deleteLeave = (id, userId) => __awaiter(void 0, void 0, void 0, function* 
                 deletedById: userId,
             },
         });
+        const pendingDays = yield (0, leaveCalc_1.calcWorkingDays)(leave.startDate, leave.endDate);
+        yield (0, leaveBalanceHelper_1.releaseBalance)(leave.userId, leave.leaveType, pendingDays);
         return { message: "Leave deleted successfully" };
     }
     catch (error) {
@@ -446,9 +431,9 @@ const getRemainingDaysOnCurrentLeave = (userId, leaveId) => __awaiter(void 0, vo
     if (leave.userId !== userId) {
         throw new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, "This leave does not belong to the user");
     }
-    const daysRequested = (0, date_fns_1.differenceInCalendarDays)(new Date(leave.endDate), new Date(leave.startDate)) + 1;
-    const daysTaken = (0, date_fns_1.differenceInCalendarDays)(new Date(), new Date(leave.startDate)) + 1;
-    return Math.max(0, daysRequested - daysTaken); // Returns the remaining days on the current leave
+    const daysRequested = yield (0, leaveCalc_1.calcWorkingDays)(new Date(leave.startDate), new Date(leave.endDate));
+    const daysTaken = yield (0, leaveCalc_1.calcWorkingDays)(new Date(leave.startDate), new Date());
+    return Math.max(0, daysRequested - daysTaken);
 });
 exports.getRemainingDaysOnCurrentLeave = getRemainingDaysOnCurrentLeave;
 const getAllLeavesHistory = () => __awaiter(void 0, void 0, void 0, function* () {

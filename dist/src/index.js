@@ -52,11 +52,13 @@ const cors_1 = __importDefault(require("cors"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const routes_1 = __importDefault(require("./routes"));
 const adminPanel_1 = require("./controller/adminPanel");
+const seedLeaveTypes_1 = require("./utils/seedLeaveTypes");
 const http_status_1 = require("./utils/http-status");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swaggerDocs = __importStar(require("./swagger.json"));
 const cron_archive_1 = require("./utils/cron-archive");
 const reminderCron_1 = require("./utils/reminderCron");
+const cron_balance_1 = require("./utils/cron-balance");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 dotenv_1.default.config();
 // Support custom database URL environment variables (e.g. from Vercel)
@@ -122,6 +124,7 @@ const isVercel = !!process.env.VERCEL;
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield (0, adminPanel_1.createAdminUser)();
+        yield (0, seedLeaveTypes_1.seedLeaveTypes)();
     }
     catch (error) {
         const err = error;
@@ -132,6 +135,7 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
         if (!isVercel) {
             (0, cron_archive_1.scheduleCronJobs)();
             (0, reminderCron_1.scheduleEmailReminder)();
+            (0, cron_balance_1.scheduleBalanceCron)();
         }
     });
 });

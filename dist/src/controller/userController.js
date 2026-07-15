@@ -68,13 +68,17 @@ const prisma_1 = __importDefault(require("../utils/prisma"));
 const formatPrisma_1 = require("../utils/formatPrisma");
 // User registration function
 const signUpUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const photo = req.file ? req.file.path : undefined;
     const picture = {
         imageUrl: "",
         imageKey: "",
     };
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     try {
         const rawUserData = Object.assign(Object.assign({}, req.body), { dob: req.body.dob ? new Date(req.body.dob) : undefined });
         if (photo) {
@@ -94,7 +98,7 @@ const signUpUser = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
         }
         const newUser = yield userHelper.createUser(rawUserData, userId, picture);
         res
-            .status(http_status_1.HttpStatus.OK)
+            .status(http_status_1.HttpStatus.CREATED)
             .json({ message: "User created successfully", user: newUser });
     }
     catch (error) {
@@ -118,7 +122,7 @@ exports.getAllUsers = getAllUsers;
 // Get a user by email
 const getUserByEmail = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { email } = req.body;
+        const { email } = req.query;
         const user = yield userHelper.getUserByEmail(email);
         res.status(http_status_1.HttpStatus.OK).json(user);
     }
@@ -143,9 +147,13 @@ const getUserById = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 exports.getUserById = getUserById;
 // Update a user
 const updateUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const { targetUserId } = req.params;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     const rawUserData = Object.assign(Object.assign({}, req.body), { dob: req.body.dob ? new Date(req.body.dob) : undefined });
     const photo = req.file ? req.file.path : undefined;
     const picture = {
@@ -175,14 +183,18 @@ const updateUser = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
 exports.updateUser = updateUser;
 // Delete a user
 const deleteUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     const { targetUserId } = req.params;
     try {
         yield userHelper.deleteUser(targetUserId, userId);
         res
             .status(http_status_1.HttpStatus.OK)
-            .json({ message: `User deleted successfully: ${userId}` });
+            .json({ message: `User deleted successfully: ${targetUserId}` });
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error); // Ensure this function is used
@@ -216,35 +228,30 @@ const userLogIn = (req, res, next) => __awaiter(void 0, void 0, void 0, function
             where: { id: user.id },
             data: { lastLogin: new Date() },
         });
+        const { password: _pw } = user, userWithoutPassword = __rest(user, ["password"]);
         res.status(http_status_1.HttpStatus.OK).json({
             userId: user.id,
             message: "login successful",
             token: newToken,
+            user: userWithoutPassword,
         });
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error);
+        res.status(err.status).json({ message: err.message });
     }
 });
 exports.userLogIn = userLogIn;
 // Get user profile
 const getUserProfile = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const authHeader = req.header("Authorization");
-    const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1];
-    if (token) {
-        const decoded = jwtDecode(token);
-        const user = yield userHelper.getUserById(decoded === null || decoded === void 0 ? void 0 : decoded.id);
-        if (user) {
-            const { password } = user, restofUser = __rest(user, ["password"]);
-            res.status(http_status_1.HttpStatus.OK).json({ restofUser });
-        }
-        else {
-            res.status(http_status_1.HttpStatus.NOT_FOUND).json({ message: "User not found" });
-        }
-    }
-    else {
+    const user = req.user;
+    if (!user) {
         res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
     }
+    const profile = yield userHelper.getUserById(user.id);
+    const { password: _pw } = profile, restofUser = __rest(profile, ["password"]);
+    res.status(http_status_1.HttpStatus.OK).json(restofUser);
 });
 exports.getUserProfile = getUserProfile;
 // User logout function
@@ -270,7 +277,7 @@ const usersForDepartment = (req, res, next) => __awaiter(void 0, void 0, void 0,
         const users = yield userHelper.getAllUsersForDepartment(departmentId);
         res
             .status(http_status_1.HttpStatus.OK)
-            .json({ message: "users fecthed successfully", data: users });
+            .json({ message: "users fetched successfully", data: users });
     }
     catch (error) {
         const err = (0, formatPrisma_1.formatPrismaError)(error); // Ensure this function is used

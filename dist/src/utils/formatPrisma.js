@@ -89,6 +89,10 @@ const formatPrismaError = (error) => {
         error instanceof client_1.Prisma.PrismaClientRustPanicError) {
         return new http_error_1.default(http_status_1.HttpStatus.INTERNAL_SERVER_ERROR, "Database connection error. Please try again later.");
     }
+    // Handle HttpException instances (pass through)
+    if (error instanceof http_error_1.default) {
+        return error;
+    }
     // Handle generic errors
     if (error instanceof Error) {
         return new http_error_1.default(http_status_1.HttpStatus.INTERNAL_SERVER_ERROR, error.message);

@@ -48,8 +48,12 @@ const http_status_1 = require("../utils/http-status");
 const formatPrisma_1 = require("../utils/formatPrisma");
 // Create Leave
 const createLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     try {
         const data = req.body;
         const leaveData = Object.assign(Object.assign({}, data), { startDate: new Date(data.startDate), endDate: new Date(data.endDate) });
@@ -83,9 +87,13 @@ const updateLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.updateLeave = updateLeave;
 // Approve Leave
 const approveLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const { leaveId } = req.params;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     try {
         const result = yield leaveHelper.approveLeave(leaveId, userId);
         res.status(http_status_1.HttpStatus.OK).json({ message: "Leave approved", data: result });
@@ -98,9 +106,13 @@ const approveLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 exports.approveLeave = approveLeave;
 // Reject Leave
 const rejectLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const { leaveId } = req.params;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     try {
         const result = yield leaveHelper.rejectLeave(leaveId, userId);
         res.status(http_status_1.HttpStatus.OK).json({ message: "Leave rejected", data: result });
@@ -113,9 +125,13 @@ const rejectLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.rejectLeave = rejectLeave;
 // Delete Leave
 const deleteLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const { leaveId } = req.params;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     try {
         const result = yield leaveHelper.deleteLeave(leaveId, userId);
         res.status(http_status_1.HttpStatus.OK).json(result);
@@ -167,7 +183,7 @@ exports.getLeavesByUserId = getLeavesByUserId;
 // Get Leaves by Status
 const getLeavesByStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { status } = req.body;
+    const { status } = req.query;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
     try {
         const leaves = yield leaveHelper.getLeavesByStatus(status);
@@ -192,8 +208,12 @@ const getAllLeavesHistory = (req, res) => __awaiter(void 0, void 0, void 0, func
 });
 exports.getAllLeavesHistory = getAllLeavesHistory;
 const getRemainingDaysOnCurrentLeaveHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const user = req.user;
+    if (!user) {
+        res.status(http_status_1.HttpStatus.FORBIDDEN).json({ message: "No token found" });
+        return;
+    }
+    const userId = user.id;
     const { leaveId } = req.params;
     try {
         const remainingDays = yield leaveHelper.getRemainingDaysOnCurrentLeave(userId, leaveId);

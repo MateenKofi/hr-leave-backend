@@ -31,10 +31,15 @@ const scheduleEmailReminder = () => {
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
+        const todayStart = new Date(today);
+        const tomorrowEnd = new Date(tomorrow);
+        tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
         const leaves = yield prisma_1.default.leave.findMany({
             where: {
                 status: "APPROVED",
                 delFlag: false,
+                startDate: { lte: tomorrowEnd },
+                endDate: { gte: todayStart },
             },
             include: { user: true },
         });
@@ -59,11 +64,16 @@ const scheduleEmailReminder = () => {
           <p>Best regards,</p>
           <p>HR Leave System</p>
         `;
-                yield (0, nodeMailer_1.sendEmail)(leave.user.email, subject, htmlContent);
-                console.log(`Pre-leave reminder sent to ${leave.user.email}`);
+                try {
+                    yield (0, nodeMailer_1.sendEmail)(leave.user.email, subject, htmlContent);
+                    console.log(`Pre-leave reminder sent to ${leave.user.email}`);
+                }
+                catch (emailError) {
+                    console.error(`Failed to send pre-leave reminder to ${leave.user.email}:`, emailError);
+                }
             }
             if (startTime <= todayTime && endTime >= todayTime) {
-                const remainingDays = calculateRemainingDays(endDate);
+                const remainingDays = Math.max(0, calculateRemainingDays(endDate));
                 const subject = "You Are Currently On Leave";
                 const htmlContent = `
           <p>Hello ${leave.user.name},</p>
@@ -72,8 +82,13 @@ const scheduleEmailReminder = () => {
           <p>Best regards,</p>
           <p>HR Leave System</p>
         `;
-                yield (0, nodeMailer_1.sendEmail)(leave.user.email, subject, htmlContent);
-                console.log(`On-leave reminder sent to ${leave.user.email}`);
+                try {
+                    yield (0, nodeMailer_1.sendEmail)(leave.user.email, subject, htmlContent);
+                    console.log(`On-leave reminder sent to ${leave.user.email}`);
+                }
+                catch (emailError) {
+                    console.error(`Failed to send on-leave reminder to ${leave.user.email}:`, emailError);
+                }
             }
             if (endTime === todayTime || endTime === tomorrowTime) {
                 const isToday = endTime === todayTime;
@@ -85,8 +100,13 @@ const scheduleEmailReminder = () => {
           <p>Best regards,</p>
           <p>HR Leave System</p>
         `;
-                yield (0, nodeMailer_1.sendEmail)(leave.user.email, subject, htmlContent);
-                console.log(`Leave-ending reminder sent to ${leave.user.email}`);
+                try {
+                    yield (0, nodeMailer_1.sendEmail)(leave.user.email, subject, htmlContent);
+                    console.log(`Leave-ending reminder sent to ${leave.user.email}`);
+                }
+                catch (emailError) {
+                    console.error(`Failed to send leave-ending reminder to ${leave.user.email}:`, emailError);
+                }
             }
         }
     }));

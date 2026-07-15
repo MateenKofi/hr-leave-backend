@@ -16,10 +16,15 @@ exports.scheduleCronJobs = void 0;
 const node_cron_1 = __importDefault(require("node-cron"));
 const leaveHelper_1 = require("../helper/leaveHelper");
 const scheduleCronJobs = () => {
-    // Schedule the job to run every day at 2 AM
     node_cron_1.default.schedule("0 2 * * *", () => __awaiter(void 0, void 0, void 0, function* () {
         console.log("Running archiveExhaustedLeaves cron job...");
-        yield (0, leaveHelper_1.archiveExhaustedLeaves)();
+        try {
+            yield (0, leaveHelper_1.archiveExhaustedLeaves)();
+            console.log("archiveExhaustedLeaves completed successfully");
+        }
+        catch (error) {
+            console.error("archiveExhaustedLeaves cron job failed:", error);
+        }
     }));
     console.log("Cron jobs scheduled");
 };

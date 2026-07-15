@@ -23,14 +23,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllUsersForDepartment = exports.getUserProfileHelper = exports.updateUser = exports.deleteUser = exports.getUserByEmail = exports.getUserById = exports.getUsers = exports.createUser = void 0;
+exports.getAllUsersForDepartment = exports.updateUser = exports.deleteUser = exports.getUserByEmail = exports.getUserById = exports.getUsers = exports.createUser = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const http_error_1 = __importDefault(require("../utils/http-error"));
 const http_status_1 = require("../utils/http-status");
 const userSchema_1 = require("../zodSchema/userSchema");
 const bcrypt_1 = require("../utils/bcrypt");
 const cloudinary_1 = __importDefault(require("../utils/cloudinary"));
-const jwt_decode_1 = require("jwt-decode");
 const formatPrisma_1 = require("../utils/formatPrisma");
 const generateEmployeeId_1 = require("../utils/generateEmployeeId");
 const generatepass_1 = require("../utils/generatepass");
@@ -65,7 +64,7 @@ const createUser = (userData, userId, picture) => __awaiter(void 0, void 0, void
       <p>HR Leave System</p>
     `;
         yield (0, nodeMailer_1.sendEmail)(newUser.email, subject, htmlContent);
-        const { password } = newUser, restOfUser = __rest(newUser, ["password"]);
+        const { password: _pw } = newUser, restOfUser = __rest(newUser, ["password"]);
         return restOfUser;
     }
     catch (error) {
@@ -75,7 +74,10 @@ const createUser = (userData, userId, picture) => __awaiter(void 0, void 0, void
 exports.createUser = createUser;
 const getUsers = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const users = yield prisma_1.default.user.findMany({ where: { delFlag: false }, include: { department: true } });
+        const users = yield prisma_1.default.user.findMany({
+            where: { delFlag: false },
+            include: { department: true },
+        });
         return users;
     }
     catch (error) {
@@ -102,7 +104,7 @@ exports.getUserById = getUserById;
 const getUserByEmail = (email) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const user = yield prisma_1.default.user.findUnique({
-            where: { email },
+            where: { email, delFlag: false },
             include: { department: true },
         });
         return user;
@@ -162,7 +164,7 @@ const updateUser = (id, userId, UserData, picture) => __awaiter(void 0, void 0, 
             where: { id },
             data: Object.assign(Object.assign({}, restOfUser), { updatedById: userId }),
         });
-        const { password } = updatedUser, restOfUpdate = __rest(updatedUser, ["password"]);
+        const { password: _pw } = updatedUser, restOfUpdate = __rest(updatedUser, ["password"]);
         return restOfUpdate;
     }
     catch (error) {
@@ -170,43 +172,10 @@ const updateUser = (id, userId, UserData, picture) => __awaiter(void 0, void 0, 
     }
 });
 exports.updateUser = updateUser;
-const getUserProfileHelper = (authHeader) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        if (!authHeader) {
-            throw new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, "No token provided");
-        }
-        const token = authHeader.split(" ")[1];
-        if (!token) {
-            throw new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, "Invalid token format");
-        }
-        let decoded;
-        try {
-            decoded = (0, jwt_decode_1.jwtDecode)(token);
-        }
-        catch (error) {
-            throw new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Invalid token");
-        }
-        const currentTime = Date.now() / 1000;
-        if ((decoded === null || decoded === void 0 ? void 0 : decoded.exp) < currentTime) {
-            throw new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Token expired");
-        }
-        const user = yield prisma_1.default.user.findUnique({
-            where: { id: decoded.id },
-        });
-        if (!user) {
-            throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "User not found");
-        }
-        return user;
-    }
-    catch (error) {
-        throw (0, formatPrisma_1.formatPrismaError)(error);
-    }
-});
-exports.getUserProfileHelper = getUserProfileHelper;
 const getAllUsersForDepartment = (departmentId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const users = yield prisma_1.default.user.findMany({
-            where: { departmentId },
+            where: { departmentId, delFlag: false },
         });
         return users;
     }

@@ -19,8 +19,7 @@ const loginLimiter = (0, express_rate_limit_1.default)({
 });
 const userRouter = (0, express_1.Router)();
 // User sign up
-userRouter.post("/signup", multer_1.default.single("photo"), (0, validate_payload_1.validatePayload)("User"), // Assuming you have validation logic for user payload
-jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), userController_1.signUpUser);
+userRouter.post("/signup", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), multer_1.default.single("photo"), (0, validate_payload_1.validatePayload)("User"), userController_1.signUpUser);
 // Get all users
 userRouter.get("/get", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "HR", "ADMIN"]), userController_1.getAllUsers);
 // Get user by email
@@ -28,7 +27,7 @@ userRouter.get("/email", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.auth
 // Get user by ID
 userRouter.get("/get/:userId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), validateUserEditAccess_1.validateUserEditAccess, userController_1.getUserById);
 // Update user
-userRouter.put("/update/:targetUserId", multer_1.default.single("photo"), (0, validate_payload_1.validatePayload)("User"), jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR", "EMPLOYEE"]), validateUserEditAccess_1.validateUserEditAccess, userController_1.updateUser);
+userRouter.put("/update/:targetUserId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR", "EMPLOYEE"]), validateUserEditAccess_1.validateUserEditAccess, multer_1.default.single("photo"), (0, validate_payload_1.validatePayload)("User"), userController_1.updateUser);
 // Delete user
 userRouter.delete("/delete/:targetUserId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), validateUserEditAccess_1.validateUserEditAccess, userController_1.deleteUser);
 // User login

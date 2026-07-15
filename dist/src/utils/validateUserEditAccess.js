@@ -13,8 +13,12 @@ const validateUserEditAccess = (req, res, next) => {
     if (!targetUserId) {
         return next(new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "User ID is required for this operation"));
     }
-    // Allow if the logged-in user is a SUPER_ADMIN
-    if (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "HR") {
+    // SUPER_ADMIN can edit anyone
+    if (user.role === "SUPER_ADMIN") {
+        return next();
+    }
+    // ADMIN can edit anyone except SUPER_ADMIN
+    if (user.role === "ADMIN" || user.role === "HR") {
         return next();
     }
     // Allow if the user is trying to update their own data

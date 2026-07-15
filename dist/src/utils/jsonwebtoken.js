@@ -8,32 +8,55 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const http_error_1 = __importDefault(require("./http-error"));
 const http_status_1 = require("./http-status");
 const uuid_1 = require("uuid");
-const tokenBlacklist = new Set();
+const tokenBlacklist = new Map();
 setInterval(() => {
-    if (tokenBlacklist.size > 1000)
-        tokenBlacklist.clear();
+    const now = Date.now();
+    for (const [token, expiry] of tokenBlacklist.entries()) {
+        if (expiry < now)
+            tokenBlacklist.delete(token);
+    }
 }, 60 * 60 * 1000);
 const invalidateToken = (token) => {
-    tokenBlacklist.add(token);
+    try {
+        const decoded = jsonwebtoken_1.default.decode(token);
+        const expiry = (decoded === null || decoded === void 0 ? void 0 : decoded.exp) ? decoded.exp * 1000 : Date.now() + 3600000;
+        tokenBlacklist.set(token, expiry);
+    }
+    catch (_a) {
+        tokenBlacklist.set(token, Date.now() + 3600000);
+    }
 };
 exports.invalidateToken = invalidateToken;
 const authenticateJWT = (req, res, next) => {
     const authHeader = req.header("Authorization");
     const token = authHeader === null || authHeader === void 0 ? void 0 : authHeader.split(" ")[1];
     if (!token) {
-        return next(new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, "No token found"));
+        return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "No token found"));
     }
-    if (tokenBlacklist.has(token)) {
-        return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Token has been invalidated"));
+    const blacklistEntry = tokenBlacklist.get(token);
+    if (blacklistEntry) {
+        if (blacklistEntry > Date.now()) {
+            return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Token has been invalidated"));
+        }
+        tokenBlacklist.delete(token);
     }
     jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
-            return next(new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, "Invalid token"));
+            return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Invalid token"));
         }
-        if (decoded) {
-            const user = decoded;
-            req.user = user;
+        if (!decoded) {
+            return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Invalid token payload"));
         }
+        const payload = decoded;
+        if (typeof payload.id !== "string" || typeof payload.role !== "string") {
+            return next(new http_error_1.default(http_status_1.HttpStatus.UNAUTHORIZED, "Invalid token payload"));
+        }
+        const user = {
+            id: payload.id,
+            role: payload.role,
+            departmentId: payload.departmentId,
+        };
+        req.user = user;
         next();
     });
 };

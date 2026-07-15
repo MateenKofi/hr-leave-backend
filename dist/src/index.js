@@ -61,22 +61,8 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 2020;
-app.use((req, res, next) => {
-    req.rawBody = "";
-    req.on("data", (chunk) => {
-        req.rawBody += chunk.toString();
-    });
-    next();
-});
 app.use(express_1.default.json({ limit: "1mb" }));
 app.use((0, morgan_1.default)("dev"));
-const loginLimiter = (0, express_rate_limit_1.default)({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    message: { message: "Too many login attempts. Try again in 15 minutes." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
 const apiLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
     max: 200,
@@ -86,11 +72,7 @@ const apiLimiter = (0, express_rate_limit_1.default)({
 });
 app.use("/api", apiLimiter);
 app.use((0, cors_1.default)({
-    origin: [
-        "http://localhost:8080",
-        "https://hr-leave-system.vercel.app",
-        "http://localhost:4040",
-    ],
+    origin: true,
     credentials: true,
 }));
 app.get("/", (req, res) => {
@@ -120,25 +102,33 @@ app.use((req, res) => {
     });
 });
 app.use((error, req, res, next) => {
+    if (res.headersSent) {
+        return next(error);
+    }
     const status = error.status || 500;
     const message = status === 500 ? "Internal server error" : error.message;
     if (status === 500)
         console.error("Unhandled error:", error);
     res.status(status).json({ message });
 });
+const isVercel = !!process.env.VERCEL;
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield (0, adminPanel_1.createAdminUser)();
-        app.listen(port, () => {
-            console.log(`[server]: Server is running at http://localhost:${port}`);
-            (0, cron_archive_1.scheduleCronJobs)();
-            (0, reminderCron_1.scheduleEmailReminder)();
-        });
     }
     catch (error) {
         const err = error;
-        console.error("Failed to start server:", err.message);
-        process.exit(1);
+        console.error("Failed to create admin user:", err.message);
     }
+    app.listen(port, () => {
+        console.log(`[server]: Server is running at http://localhost:${port}`);
+        if (!isVercel) {
+            (0, cron_archive_1.scheduleCronJobs)();
+            (0, reminderCron_1.scheduleEmailReminder)();
+        }
+    });
 });
-startServer(); // Start the server
+if (!isVercel) {
+    startServer();
+}
+exports.default = app;

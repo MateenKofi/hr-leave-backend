@@ -103,7 +103,7 @@ const getSuperAdminAnalytics = () => __awaiter(void 0, void 0, void 0, function*
     };
 });
 exports.getSuperAdminAnalytics = getSuperAdminAnalytics;
-// deparment Analytics
+// department Analytics
 const departmentAnalytics = (departmentId) => __awaiter(void 0, void 0, void 0, function* () {
     const now = new Date();
     const startOfThisYear = (0, date_fns_1.startOfYear)(now);

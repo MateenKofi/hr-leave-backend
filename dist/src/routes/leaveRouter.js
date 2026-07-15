@@ -12,7 +12,7 @@ leaveRouter.get("/get", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.autho
 // Get all leaves history
 leaveRouter.get("/get/history", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "HR"]), leaveController_1.getAllLeavesHistory);
 // Get a leave by ID
-leaveRouter.get("/get/:leaveId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "EMPLOYEE", "HR"]), leaveController_1.getLeaveById);
+leaveRouter.get("/get/:leaveId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "EMPLOYEE", "HR"]), validateUserEditAccess_1.validateUserEditAccess, leaveController_1.getLeaveById);
 // Get leaves by user ID
 leaveRouter.get("/get/user/:userId", jsonwebtoken_1.authenticateJWT, (0, jsonwebtoken_1.authorizeRole)(["SUPER_ADMIN", "ADMIN", "EMPLOYEE", "HR"]), validateUserEditAccess_1.validateUserEditAccess, leaveController_1.getLeavesByUserId);
 // Get leaves by status

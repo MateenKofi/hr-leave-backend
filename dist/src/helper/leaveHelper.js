@@ -31,7 +31,8 @@ const leaveSchema_1 = require("../zodSchema/leaveSchema");
 const client_1 = require("@prisma/client");
 const formatPrisma_1 = require("../utils/formatPrisma");
 const date_fns_1 = require("date-fns");
-const nodeMailer_1 = require("../utils/nodeMailer");
+const emailQueue_1 = require("../utils/emailQueue");
+const emailTemplates_1 = require("../utils/emailTemplates");
 //  Create Leave
 const createLeave = (leaveData, userId) => __awaiter(void 0, void 0, void 0, function* () {
     const validated = leaveSchema_1.createLeaveSchema.safeParse(leaveData);
@@ -98,13 +99,17 @@ const createLeave = (leaveData, userId) => __awaiter(void 0, void 0, void 0, fun
             throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `No policy found for ${leaveType} leave`);
         }
         const daysRequested = (0, date_fns_1.differenceInCalendarDays)(new Date(endDate), new Date(startDate)) + 1;
-        yield checkAnnualLeaveAvailability(userId, daysRequested);
+        if (leaveType === "ANNUAL") {
+            yield checkAnnualLeaveAvailability(userId, daysRequested);
+        }
         if (daysRequested > policy.maxDays) {
             throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, `Requested ${daysRequested} days, but policy only allows ${policy.maxDays} days for ${leaveType} leave`);
         }
-        const leave = yield prisma_1.default.leave.create({
-            data: Object.assign(Object.assign({}, leaveData), { userId, createdById: userId }),
-        });
+        const [leave] = yield prisma_1.default.$transaction([
+            prisma_1.default.leave.create({
+                data: Object.assign(Object.assign({}, leaveData), { userId, createdById: userId }),
+            }),
+        ]);
         yield prisma_1.default.leaveHistory.create({
             data: {
                 leaveId: leave.id,
@@ -199,9 +204,13 @@ const updateLeave = (id, leaveData, userId) => __awaiter(void 0, void 0, void 0,
 exports.updateLeave = updateLeave;
 //  Approve Leave
 const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const leave = yield prisma_1.default.leave.findUnique({ where: { id } });
     if (!leave)
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "Leave not found");
+    if (leave.status !== client_1.LeaveStatus.PENDING) {
+        throw new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, `Cannot approve a leave that has already been ${leave.status.toLowerCase()}`);
+    }
     const approver = yield prisma_1.default.user.findUnique({ where: { id: approverId } });
     if (!approver)
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "Approver not found");
@@ -218,40 +227,43 @@ const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, funct
     if (approvalDate > requestedStartDate) {
         effectiveStartDate = approvalDate;
     }
-    // Calculate the days requested (we still keep the original requested dates for history, but adjust the counting period)
-    const daysRequested = (0, date_fns_1.differenceInCalendarDays)(requestedEndDate, requestedStartDate) + 1;
     const daysBetweenApprovalAndRequestedStart = (0, date_fns_1.differenceInCalendarDays)(effectiveStartDate, requestedStartDate);
+    const daysRequested = (0, date_fns_1.differenceInCalendarDays)(requestedEndDate, effectiveStartDate) + 1;
+    if (daysRequested <= 0) {
+        throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "The leave period has already passed and cannot be approved.");
+    }
     // Ensure the user has enough leave available
     const user = yield prisma_1.default.user.findUnique({ where: { id: leave.userId } });
     if (!user) {
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "User not found");
     }
-    // Check if the user has enough annual leave to approve the request
-    if (user.totalLeavesRemaining === null ||
-        user.totalLeavesRemaining === undefined ||
-        user.totalLeavesRemaining < daysRequested) {
-        throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "User does not have enough annual leave for this request");
+    // Check if the user has enough annual leave to approve the request (only for ANNUAL leave)
+    if (leave.leaveType === "ANNUAL") {
+        if (user.totalLeavesRemaining === null ||
+            user.totalLeavesRemaining === undefined ||
+            user.totalLeavesRemaining < daysRequested) {
+            throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "User does not have enough annual leave for this request");
+        }
     }
-    // Deduct the requested leave days from the user's available leave (if not already deducted)
-    yield prisma_1.default.user.update({
-        where: { id: leave.userId },
-        data: {
-            totalLeavesRemaining: user.totalLeavesRemaining - daysRequested,
-        },
-    });
     // Update the leave with the adjusted start date (if the approval date was delayed)
-    const updatedLeave = yield prisma_1.default.leave.update({
+    const operations = [];
+    if (leave.leaveType === "ANNUAL") {
+        operations.push(prisma_1.default.user.update({
+            where: { id: leave.userId },
+            data: {
+                totalLeavesRemaining: ((_a = user.totalLeavesRemaining) !== null && _a !== void 0 ? _a : 0) - daysRequested,
+            },
+        }));
+    }
+    operations.push(prisma_1.default.leave.update({
         where: { id },
         data: {
             status: client_1.LeaveStatus.APPROVED,
             approvedById: approverId,
             updatedById: approverId,
-            startDate: effectiveStartDate, // Adjust the start date
+            startDate: effectiveStartDate,
         },
-    });
-    const start = updatedLeave.startDate;
-    // Create a history record for this approval
-    yield prisma_1.default.leaveHistory.create({
+    }), prisma_1.default.leaveHistory.create({
         data: {
             leaveId: id,
             oldStatus: leave.status,
@@ -259,25 +271,17 @@ const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, funct
             userId: leave.userId,
             changedById: approverId,
         },
-    });
-    const subject = "You Are Currently On Leave";
-    const htmlContent = `
-            <p>Hello ${user.name},</p>
-            <p>We hope you are having a restful time!</p>
-            <p>Your leave has been ap. It begins on ${start}.</p>
-            <p>Best regards,</p>
-            
-          `;
-    // Send email to the user
-    yield (0, nodeMailer_1.sendEmail)(user.email, subject, htmlContent);
-    // Send notification to the user
-    yield prisma_1.default.notification.create({
+    }), prisma_1.default.notification.create({
         data: {
             userId: leave.userId,
             leaveId: id,
             message: `Your leave request has been approved and the start date is adjusted to ${effectiveStartDate.toDateString()}`,
         },
-    });
+    }));
+    yield prisma_1.default.$transaction(operations);
+    const updatedLeave = yield prisma_1.default.leave.findUnique({ where: { id } });
+    const { subject, html: htmlContent } = (0, emailTemplates_1.buildApprovalEmail)(user.name, leave.leaveType, effectiveStartDate, requestedEndDate, daysRequested, leave.reason || "", approver.name);
+    (0, emailQueue_1.queueEmail)(user.email, subject, htmlContent);
     return updatedLeave;
 });
 exports.approveLeave = approveLeave;
@@ -286,6 +290,9 @@ const rejectLeave = (id, rejecterId) => __awaiter(void 0, void 0, void 0, functi
     const leave = yield prisma_1.default.leave.findUnique({ where: { id } });
     if (!leave)
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "Leave not found");
+    if (leave.status !== client_1.LeaveStatus.PENDING) {
+        throw new http_error_1.default(http_status_1.HttpStatus.FORBIDDEN, `Cannot reject a leave that has already been ${leave.status.toLowerCase()}`);
+    }
     const rejector = yield prisma_1.default.user.findUnique({ where: { id: rejecterId } });
     if (!rejector)
         throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "User not found");
@@ -312,15 +319,8 @@ const rejectLeave = (id, rejecterId) => __awaiter(void 0, void 0, void 0, functi
     });
     const user = yield prisma_1.default.user.findUnique({ where: { id: leave.userId } });
     if (user) {
-        const subject = "Leave Request Rejected";
-        const htmlContent = `
-      <p>Hello ${user.name},</p>
-      <p>We regret to inform you that your leave request has been rejected.</p>
-      <p>Please contact your administrator for more details.</p>
-      <p>Best regards,</p>
-      <p>HR Leave System</p>
-    `;
-        yield (0, nodeMailer_1.sendEmail)(user.email, subject, htmlContent);
+        const { subject, html: htmlContent } = (0, emailTemplates_1.buildRejectionEmail)(user.name, leave.leaveType, leave.startDate, leave.endDate, leave.reason || "", rejector.name);
+        (0, emailQueue_1.queueEmail)(user.email, subject, htmlContent);
     }
     yield prisma_1.default.notification.create({
         data: {
@@ -396,7 +396,7 @@ const getLeavesByUserId = (userId) => __awaiter(void 0, void 0, void 0, function
                 histories: true,
             },
         });
-        if (!leaves)
+        if (leaves.length === 0)
             throw new http_error_1.default(http_status_1.HttpStatus.NOT_FOUND, "No leaves found for this user");
         return leaves;
     }
@@ -448,7 +448,7 @@ const getRemainingDaysOnCurrentLeave = (userId, leaveId) => __awaiter(void 0, vo
     }
     const daysRequested = (0, date_fns_1.differenceInCalendarDays)(new Date(leave.endDate), new Date(leave.startDate)) + 1;
     const daysTaken = (0, date_fns_1.differenceInCalendarDays)(new Date(), new Date(leave.startDate)) + 1;
-    return daysRequested - daysTaken; // Returns the remaining days on the current leave
+    return Math.max(0, daysRequested - daysTaken); // Returns the remaining days on the current leave
 });
 exports.getRemainingDaysOnCurrentLeave = getRemainingDaysOnCurrentLeave;
 const getAllLeavesHistory = () => __awaiter(void 0, void 0, void 0, function* () {
@@ -500,7 +500,7 @@ const isUserCurrentlyOnLeave = (userId) => __awaiter(void 0, void 0, void 0, fun
         where: {
             userId,
             delFlag: false,
-            status: { in: ["APPROVED", "PENDING"] },
+            status: { in: ["APPROVED"] },
             startDate: { lte: now }, // leave must have started already
             endDate: { gte: now }, // leave must not have ended yet
         },

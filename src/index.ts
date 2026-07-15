@@ -31,22 +31,9 @@ const apiLimiter = rateLimit({
 
 app.use("/api", apiLimiter);
 
-const allowedOrigins = [
-  "http://localhost:4040",
-  "http://localhost:8080",
-  "https://hr-leave-system.vercel.app",
-  "https://hr-leave-backend.vercel.app",
-];
-
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin || allowedOrigins[0]);
-      } else {
-        callback(null, false);
-      }
-    },
+    origin: true,
     credentials: true,
   }),
 );

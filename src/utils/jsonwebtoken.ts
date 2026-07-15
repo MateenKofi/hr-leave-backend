@@ -3,7 +3,7 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import HttpException from "./http-error";
 import { HttpStatus } from "./http-status";
 import { UserRole } from "@prisma/client";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 export interface UserPayload {
   id: string;
@@ -94,7 +94,7 @@ export const signToken = (payload: UserPayload): string => {
   }
 
   return jwt.sign(
-    { ...payload, jti: uuidv4(), iss: "hr-leave-system", aud: "hr-leave-system-api" },
+    { ...payload, jti: randomUUID(), iss: "hr-leave-system", aud: "hr-leave-system-api" },
     jwtSecret,
     { expiresIn: jwtExpiresIn } as SignOptions,
   );

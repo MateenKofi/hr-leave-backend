@@ -7,7 +7,7 @@ exports.authorizeRole = exports.setInvalidToken = exports.signToken = exports.au
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const http_error_1 = __importDefault(require("./http-error"));
 const http_status_1 = require("./http-status");
-const uuid_1 = require("uuid");
+const crypto_1 = require("crypto");
 const tokenBlacklist = new Map();
 setInterval(() => {
     const now = Date.now();
@@ -67,7 +67,7 @@ const signToken = (payload) => {
     if (!jwtSecret || !jwtExpiresIn) {
         throw new http_error_1.default(http_status_1.HttpStatus.INTERNAL_SERVER_ERROR, "JWT configuration is missing");
     }
-    return jsonwebtoken_1.default.sign(Object.assign(Object.assign({}, payload), { jti: (0, uuid_1.v4)(), iss: "hr-leave-system", aud: "hr-leave-system-api" }), jwtSecret, { expiresIn: jwtExpiresIn });
+    return jsonwebtoken_1.default.sign(Object.assign(Object.assign({}, payload), { jti: (0, crypto_1.randomUUID)(), iss: "hr-leave-system", aud: "hr-leave-system-api" }), jwtSecret, { expiresIn: jwtExpiresIn });
 };
 exports.signToken = signToken;
 const setInvalidToken = () => {

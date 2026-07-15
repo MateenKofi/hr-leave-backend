@@ -211,7 +211,7 @@ const approveLeave = (id, approverId) => __awaiter(void 0, void 0, void 0, funct
         effectiveStartDate = approvalDate;
     }
     const daysBetweenApprovalAndRequestedStart = (0, date_fns_1.differenceInCalendarDays)(effectiveStartDate, requestedStartDate);
-    const daysRequested = yield (0, leaveCalc_1.calcWorkingDays)(requestedEndDate, effectiveStartDate);
+    const daysRequested = yield (0, leaveCalc_1.calcWorkingDays)(effectiveStartDate, requestedEndDate);
     if (daysRequested <= 0) {
         throw new http_error_1.default(http_status_1.HttpStatus.BAD_REQUEST, "The leave period has already passed and cannot be approved.");
     }
@@ -463,7 +463,6 @@ const archiveExhaustedLeaves = () => __awaiter(void 0, void 0, void 0, function*
         },
     });
     if (exhaustedLeaves.length === 0) {
-        console.log("No exhausted leaves to archive.");
         return;
     }
     // Soft delete these leaves by setting delFlag: true
@@ -475,12 +474,10 @@ const archiveExhaustedLeaves = () => __awaiter(void 0, void 0, void 0, function*
             delFlag: true,
         },
     });
-    console.log(`Archived ${exhaustedLeaves.length} exhausted leaves.`);
 });
 exports.archiveExhaustedLeaves = archiveExhaustedLeaves;
 const isUserCurrentlyOnLeave = (userId) => __awaiter(void 0, void 0, void 0, function* () {
-    const now = new Date(); // actual current timestamp
-    console.log("Current time:", now.toISOString());
+    const now = new Date();
     const leave = yield prisma_1.default.leave.findFirst({
         where: {
             userId,
@@ -490,7 +487,6 @@ const isUserCurrentlyOnLeave = (userId) => __awaiter(void 0, void 0, void 0, fun
             endDate: { gte: now }, // leave must not have ended yet
         },
     });
-    console.log("Matched leave:", leave);
     return leave !== null;
 });
 exports.isUserCurrentlyOnLeave = isUserCurrentlyOnLeave;

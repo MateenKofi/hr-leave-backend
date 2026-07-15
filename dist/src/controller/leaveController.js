@@ -230,7 +230,6 @@ const getRemainingDaysOnCurrentLeaveHandler = (req, res) => __awaiter(void 0, vo
 exports.getRemainingDaysOnCurrentLeaveHandler = getRemainingDaysOnCurrentLeaveHandler;
 const isUserOnLeave = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.params.userId;
-    console.log("userId", userId);
     try {
         const isOnLeave = yield leaveHelper.isUserCurrentlyOnLeave(userId);
         res.status(http_status_1.HttpStatus.OK).json({

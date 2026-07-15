@@ -5,7 +5,7 @@ import { baseEntitySchema, auditableSchema, UserRole } from "./baseSchema";
 export const createUserSchema = baseEntitySchema.merge(auditableSchema).extend({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email format"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
   phoneNumber: z.string().optional(),
   role: UserRole.default("EMPLOYEE"),
   imageUrl: z.string().url().optional(),

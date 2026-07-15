@@ -1,0 +1,1381 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "HR Leave Management System API",
+        "version": "1.0.0",
+        "description": "API documentation for HR Leave Management System"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:4500/api",
+            "description": "Development server"
+        },
+        {
+            "url": "https://hr-leave-management-system.onrender.com/api",
+            "description": "Production server"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Users",
+            "description": "User management endpoints"
+        },
+        {
+            "name": "Departments",
+            "description": "Department management endpoints"
+        },
+        {
+            "name": "Leaves",
+            "description": "Leave management endpoints"
+        },
+        {
+            "name": "Leave Policies",
+            "description": "Leave policy management endpoints"
+        },
+        {
+            "name": "Notifications",
+            "description": "Notification management endpoints"
+        },
+        {
+            "name": "Analytics",
+            "description": "Analytics and reporting endpoints"
+        }
+    ],
+    "paths": {
+        "/users/signup": {
+            "post": {
+                "tags": ["Users"],
+                "summary": "Create a new user",
+                "description": "Create a new user in the system (Admin only)",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateUser"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/users/login": {
+            "post": {
+                "tags": ["Users"],
+                "summary": "User login",
+                "description": "Authenticate user and get access token",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    }
+                                },
+                                "required": ["email", "password"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/users/get": {
+            "get": {
+                "tags": ["Users"],
+                "summary": "Get all users",
+                "description": "Retrieve all users (Admin and HR only)",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of users",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/User"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/users/get/{userId}": {
+            "get": {
+                "tags": ["Users"],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/users/update/{targetUserId}": {
+            "put": {
+                "tags": ["Users"],
+                "summary": "Update user",
+                "parameters": [
+                    {
+                        "name": "targetUserId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUser"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/leaves/request": {
+            "post": {
+                "tags": ["Leaves"],
+                "summary": "Request a leave",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateLeave"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Leave request created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Leave"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaves/approve/{leaveId}": {
+            "put": {
+                "tags": ["Leaves"],
+                "summary": "Approve a leave request",
+                "parameters": [
+                    {
+                        "name": "leaveId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Leave request approved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Leave"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaves/remaining/{leaveId}": {
+            "get": {
+                "tags": ["Leaves"],
+                "summary": "Get remaining leaves on current leave",
+                "parameters": [
+                    {
+                        "name": "leaveId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Remaining leaves on current leave",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Leave"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/departments/create": {
+            "post": {
+                "tags": ["Departments"],
+                "summary": "Create a department",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDepartment"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Department created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Department"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/departments/get": {
+            "get": {
+                "tags": ["Departments"],
+                "summary": "Get all departments",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of departments",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Department" }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" }
+                }
+            }
+        },
+        "/departments/getid/{departmentId}": {
+            "get": {
+                "tags": ["Departments"],
+                "summary": "Get department by ID",
+                "parameters": [
+                    {
+                        "name": "departmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Department found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Department" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/departments/update/{departmentId}": {
+            "put": {
+                "tags": ["Departments"],
+                "summary": "Update department",
+                "parameters": [
+                    {
+                        "name": "departmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateDepartment" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Department updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Department" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/departments/delete/{departmentId}": {
+            "delete": {
+                "tags": ["Departments"],
+                "summary": "Delete department",
+                "parameters": [
+                    {
+                        "name": "departmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Department deleted" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/departments/get/{departmentId}/users": {
+            "get": {
+                "tags": ["Departments"],
+                "summary": "Get users from department",
+                "parameters": [
+                    {
+                        "name": "departmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of users",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/User" }
+                                }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leaves/get": {
+            "get": {
+                "tags": ["Leaves"],
+                "summary": "Get all leaves",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of leaves",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Leave" }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" }
+                }
+            }
+        },
+        "/leaves/get/history": {
+            "get": {
+                "tags": ["Leaves"],
+                "summary": "Get all leaves history",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of leave histories",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Leave" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaves/get/{leaveId}": {
+            "get": {
+                "tags": ["Leaves"],
+                "summary": "Get leave by ID",
+                "parameters": [
+                    {
+                        "name": "leaveId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Leave found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Leave" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leaves/get/user/{userId}": {
+            "get": {
+                "tags": ["Leaves"],
+                "summary": "Get leaves by user ID",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of leaves",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Leave" }
+                                }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leaves/get-by-status": {
+            "get": {
+                "tags": ["Leaves"],
+                "summary": "Get leaves by status",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of leaves by status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Leave" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaves/update/{leaveId}": {
+            "put": {
+                "tags": ["Leaves"],
+                "summary": "Update leave",
+                "parameters": [
+                    {
+                        "name": "leaveId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateLeave" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Leave updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Leave" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leaves/delete/{leaveId}": {
+            "delete": {
+                "tags": ["Leaves"],
+                "summary": "Delete leave",
+                "parameters": [
+                    {
+                        "name": "leaveId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Leave deleted" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leaves/reject/{leaveId}": {
+            "put": {
+                "tags": ["Leaves"],
+                "summary": "Reject leave",
+                "parameters": [
+                    {
+                        "name": "leaveId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Leave rejected",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Leave" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leavepolicies/create": {
+            "post": {
+                "tags": ["Leave Policies"],
+                "summary": "Create leave policy",
+                "security": [{ "BearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateLeavePolicy" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Leave policy created",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/LeavePolicy" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leavepolicies/get": {
+            "get": {
+                "tags": ["Leave Policies"],
+                "summary": "Get all leave policies",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of leave policies",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/LeavePolicy" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leavepolicies/getid/{leavePolicyId}": {
+            "get": {
+                "tags": ["Leave Policies"],
+                "summary": "Get leave policy by ID",
+                "parameters": [
+                    {
+                        "name": "leavePolicyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Leave policy found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/LeavePolicy" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leavepolicies/update/{leavePolicyId}": {
+            "put": {
+                "tags": ["Leave Policies"],
+                "summary": "Update leave policy",
+                "parameters": [
+                    {
+                        "name": "leavePolicyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateLeavePolicy" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Leave policy updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/LeavePolicy" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/leavepolicies/delete/{leavePolicyId}": {
+            "delete": {
+                "tags": ["Leave Policies"],
+                "summary": "Delete leave policy",
+                "parameters": [
+                    {
+                        "name": "leavePolicyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Leave policy deleted" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/notifications/create": {
+            "post": {
+                "tags": ["Notifications"],
+                "summary": "Create notification",
+                "security": [{ "BearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateNotification" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Notification created",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Notification" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/get": {
+            "get": {
+                "tags": ["Notifications"],
+                "summary": "Get user notifications",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of notifications",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Notification" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read/{notificationId}": {
+            "put": {
+                "tags": ["Notifications"],
+                "summary": "Mark notification as read",
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Notification marked as read" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/notifications/unread/{notificationId}": {
+            "put": {
+                "tags": ["Notifications"],
+                "summary": "Mark notification as unread",
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Notification marked as unread" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/notifications/read/all": {
+            "put": {
+                "tags": ["Notifications"],
+                "summary": "Mark all notifications as read",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "All notifications marked as read" }
+                }
+            }
+        },
+        "/notifications/delete/{notificationId}": {
+            "delete": {
+                "tags": ["Notifications"],
+                "summary": "Delete notification",
+                "parameters": [
+                    {
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Notification deleted" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/analytics/deparment": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Get department analytics",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Analytics data for HR" }
+                }
+            }
+        },
+        "/analytics/employee": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Get employee analytics",
+                "security": [{ "BearerAuth": [] }],
+                "responses": {
+                    "200": { "description": "Analytics data for employee" }
+                }
+            }
+        },
+        "/analytics/super-admin": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Get super admin analytics",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Analytics data retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "totalUsers": {
+                                            "type": "number"
+                                        },
+                                        "totalLeaves": {
+                                            "type": "number"
+                                        },
+                                        "pendingLeaves": {
+                                            "type": "number"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["ADMIN", "HR", "EMPLOYEE", "SUPER_ADMIN"]
+                    },
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "imageUrl": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "departmentId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CreateUser": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["ADMIN", "HR", "EMPLOYEE", "SUPER_ADMIN"]
+                    },
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "photo": {
+                        "type": "string",
+                        "format": "binary"
+                    },
+                    "departmentId": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": ["name", "email", "password", "departmentId"]
+            },
+            "UpdateUser": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "photo": {
+                        "type": "string",
+                        "format": "binary"
+                    },
+                    "departmentId": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            },
+            "Department": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CreateDepartment": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "required": ["name", "description"]
+            },
+            "Leave": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "userId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "leaveType": {
+                        "type": "string",
+                        "enum": ["MATERNITY", "PATERNITY", "SICK", "EMERGENCY", "ANNUAL"]
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["PENDING", "APPROVED", "REJECTED"]
+                    }
+                }
+            },
+            "CreateLeave": {
+                "type": "object",
+                "properties": {
+                    "leaveType": {
+                        "type": "string",
+                        "enum": ["MATERNITY", "PATERNITY", "SICK", "EMERGENCY", "ANNUAL"]
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "reason": {
+                        "type": "string"
+                    }
+                },
+                "required": ["leaveType", "startDate", "endDate", "reason"]
+            },
+            "LeavePolicy": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "leaveType": {
+                        "type": "string",
+                        "enum": ["MATERNITY", "PATERNITY", "SICK", "EMERGENCY", "ANNUAL"]
+                    },
+                    "maxLeaves": {
+                        "type": "integer"
+                    },
+                    "resetPeriod": {
+                        "type": "string",
+                        "enum": ["YEARLY", "HALF_YEARLY", "QUARTERLY"]
+                    },
+                    "carryForward": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CreateLeavePolicy": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "leaveType": {
+                        "type": "string",
+                        "enum": ["MATERNITY", "PATERNITY", "SICK", "EMERGENCY", "ANNUAL"]
+                    },
+                    "maxLeaves": {
+                        "type": "integer"
+                    },
+                    "resetPeriod": {
+                        "type": "string",
+                        "enum": ["YEARLY", "HALF_YEARLY", "QUARTERLY"]
+                    },
+                    "carryForward": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "name",
+                    "description",
+                    "leaveType",
+                    "maxLeaves",
+                    "resetPeriod",
+                    "carryForward"
+                ]
+            },
+            "Notification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "userId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "isRead": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CreateNotification": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                },
+                "required": ["userId", "message", "type"]
+            }
+        },
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        },
+        "responses": {
+            "BadRequest": {
+                "description": "Bad Request",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Unauthorized": {
+                "description": "Unauthorized",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Forbidden",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Not Found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

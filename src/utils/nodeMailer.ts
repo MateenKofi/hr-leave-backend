@@ -14,7 +14,7 @@ export const sendEmail = async (
   });
 
   const mailOptions = {
-    from: `"Hostel Management" <${process.env.EMAIL_USER}>`,
+    from: `"HR Leave System" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: subject,
     html: htmlContent, // <-- styled HTML content goes here

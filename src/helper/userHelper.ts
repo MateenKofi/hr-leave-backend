@@ -9,6 +9,8 @@ import { jwtDecode } from "jwt-decode";
 import { UserPayload } from "../utils/jsonwebtoken";
 import { formatPrismaError } from "../utils/formatPrisma";
 import { generateEmployeeId } from "../utils/generateEmployeeId";
+import { generatePassword } from "../utils/generatepass";
+import { sendEmail } from "../utils/nodeMailer";
 
 export const createUser = async (
   userData: User,
@@ -29,8 +31,10 @@ export const createUser = async (
     if (findUser) {
       throw new HttpException(HttpStatus.CONFLICT, "Email already exists");
     }
-const employeeId= await generateEmployeeId(userData.departmentId) 
-    const hashedPassword = await hashPassword(userData.password);
+
+    const rawPassword = userData.password || generatePassword();
+    const employeeId = await generateEmployeeId(userData.departmentId);
+    const hashedPassword = await hashPassword(rawPassword);
     const newUser = await prisma.user.create({
       data: {
         ...userData,
@@ -38,9 +42,23 @@ const employeeId= await generateEmployeeId(userData.departmentId)
         imageKey: picture.imageKey,
         imageUrl: picture.imageUrl,
         createdById: userId,
-        employeeId: employeeId, 
+        employeeId: employeeId,
       },
     });
+
+    const subject = "Welcome to HR Leave System";
+    const htmlContent = `
+      <p>Hello ${newUser.name},</p>
+      <p>Your account has been created successfully.</p>
+      <p>Here are your login credentials:</p>
+      <p><strong>Email:</strong> ${newUser.email}</p>
+      <p><strong>Password:</strong> ${rawPassword}</p>
+      <p>Please change your password after logging in.</p>
+      <p>Best regards,</p>
+      <p>HR Leave System</p>
+    `;
+    await sendEmail(newUser.email, subject, htmlContent);
+
     const { password, ...restOfUser } = newUser;
     return restOfUser as User;
   } catch (error) {

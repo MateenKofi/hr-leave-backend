@@ -43,7 +43,5 @@ export const createAdminUser = async () => {
       err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       err.message || "Failed to check for admin"
     );
-  } finally {
-    await prisma.$disconnect(); // Ensure Prisma client disconnects
   }
 };

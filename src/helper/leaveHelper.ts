@@ -404,6 +404,20 @@ export const rejectLeave = async (id: string, rejecterId: string) => {
     },
   });
 
+  const user = await prisma.user.findUnique({ where: { id: leave.userId } });
+
+  if (user) {
+    const subject = "Leave Request Rejected";
+    const htmlContent = `
+      <p>Hello ${user.name},</p>
+      <p>We regret to inform you that your leave request has been rejected.</p>
+      <p>Please contact your administrator for more details.</p>
+      <p>Best regards,</p>
+      <p>HR Leave System</p>
+    `;
+    await sendEmail(user.email, subject, htmlContent);
+  }
+
   await prisma.notification.create({
     data: {
       userId: leave.userId,

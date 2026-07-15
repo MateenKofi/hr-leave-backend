@@ -631,7 +631,6 @@ export const archiveExhaustedLeaves = async () => {
   });
 
   if (exhaustedLeaves.length === 0) {
-    console.log("No exhausted leaves to archive.");
     return;
   }
 
@@ -644,16 +643,10 @@ export const archiveExhaustedLeaves = async () => {
       delFlag: true,
     },
   });
-
-  console.log(`Archived ${exhaustedLeaves.length} exhausted leaves.`);
 };
 
-
-
 export const isUserCurrentlyOnLeave = async (userId: string) => {
-  const now = new Date(); // actual current timestamp
-
-  console.log("Current time:", now.toISOString());
+  const now = new Date();
 
   const leave = await prisma.leave.findFirst({
     where: {
@@ -664,8 +657,6 @@ export const isUserCurrentlyOnLeave = async (userId: string) => {
       endDate: { gte: now },    // leave must not have ended yet
     },
   });
-
-  console.log("Matched leave:", leave);
 
   return leave !== null;
 };
